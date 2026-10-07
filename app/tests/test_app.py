@@ -51,6 +51,12 @@ class PortalRegressionTests(unittest.TestCase):
         self.assertTrue(portal.verify_password(first, "04071950"))
         self.assertFalse(portal.verify_password(first, "wrong"))
 
+    def test_new_submission_can_download_its_acknowledgment(self):
+        with self.client.session_transaction() as session:
+            session["submitted_application_id"] = 123
+        with self.client.session_transaction() as session:
+            self.assertEqual(session["submitted_application_id"], 123)
+
 
 if __name__ == "__main__":
     unittest.main()

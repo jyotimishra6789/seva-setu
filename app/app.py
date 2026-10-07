@@ -432,6 +432,7 @@ def handle_submission():
     session.pop("form_data", None)
     session.pop("doc_path", None)
     session.pop("verified_mobile", None)
+    session["submitted_application_id"] = new_id
     send_sms(mobile, "Sewa Setu: application %s received. Track at the status portal "
                      "with mobile no. and password (DOB as DDMMYYYY)." % app_no)
     return render_template("confirmation.html", app_no=app_no, app_id=new_id)
@@ -603,7 +604,8 @@ def withdraw_application(app_id):
 
 @app.route("/ack/<int:app_id>.pdf")
 def ack_pdf(app_id):
-    if not (is_admin() or citizen_owns_application(app_id)):
+    just_submitted = session.get("submitted_application_id") == app_id
+    if not (is_admin() or citizen_owns_application(app_id) or just_submitted):
         abort(403)
     path = os.path.join(UPLOAD_DIR, "ack", "%d.pdf" % app_id)
     if not os.path.exists(path):
