@@ -617,7 +617,9 @@ def ack_pdf(app_id):
     data = generate_acknowledgment(cur, app_id)
     cur.close()
     conn.close()
-    return send_file(io.BytesIO(data), mimetype="application/pdf")
+    response = send_file(io.BytesIO(data), mimetype="application/pdf")
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 
 @app.route("/status/reset", methods=["GET", "POST"])
