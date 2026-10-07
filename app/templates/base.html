@@ -44,14 +44,13 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
 <body>
 <div class="header">
   <h1>{{ t.title }}</h1>
-  <div class="sub">Department of Social Welfare &middot; Government of Purvanchal</div>
+  <div class="sub">{{ t.department }}</div>
 </div>
 <div class="band"></div>
 <div class="container">
 <div class="help-banner" role="note">
-  <strong>Need help?</strong> This pension service is free. Do not pay an agent or share
-  your OTP. For free assistance, visit your nearest Block Development Office or use
-  <a href="/grievance">Grievance Cell</a> / <a href="/contact">Contact Us</a>.
+  <strong>{{ t.help }}</strong> {{ t.free_assistance }}
+  <a href="/grievance">{{ t.grievance }}</a> / <a href="/contact">{{ t.contact }}</a>.
 </div>
 {% with messages = get_flashed_messages() %}
   {% for m in messages %}<div class="flash" role="alert">{{ m }}</div>{% endfor %}
@@ -59,13 +58,13 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
 {% block content %}{% endblock %}
 </div>
 <div class="footer">
-  <a href="/language">Change language</a> |
-  <a href="/about">About the Scheme</a> |
-  <a href="/rti">RTI</a> |
-  <a href="/grievance">Grievance Cell</a> |
+  <a href="/language">{{ t.change_language }}</a> |
+  <a href="/about">{{ t.about }}</a> |
+  <a href="/rti">{{ t.rti }}</a> |
+  <a href="/grievance">{{ t.grievance }}</a> |
   <a href="http://swd.purvanchal.nic.in/pension-rules-2019.pdf">Pension Rules 2019</a> |
-  <a href="/contact">Contact Us</a><br>
-  Site designed &amp; developed by Netlink Infosolutions Pvt Ltd. Best viewed in 1024x768.
+  <a href="/contact">{{ t.contact }}</a><br>
+  {{ t.service_footer }}
 </div>
 <script>
 (function () {
@@ -83,6 +82,12 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
       speak(document.querySelector(".container").innerText);
     });
   });
+  var pageButton = document.querySelector("[data-speak='global']");
+  if (pageButton) {
+    pageButton.addEventListener("click", function () {
+      speak(document.querySelector(".container").innerText);
+    });
+  }
   var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (Recognition) {
     document.querySelectorAll("input[type='text'], textarea").forEach(function (field) {

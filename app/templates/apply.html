@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="steps"><b>Step 1 of 6:</b> Mobile Verification &rsaquo; Personal Details &rsaquo; Address &rsaquo; Bank Details &rsaquo; Document Upload &rsaquo; Declaration</div>
-<h2>Mobile Verification</h2>
+<div class="page-tools"><button class="voice-button" type="button" data-speak="global">🔊 {{ t.read_aloud }}</button></div>
+<h2>{{ t.mobile_verification }}</h2>
 <div class="plain-help">
   <strong>Ask for free help if needed.</strong> A family member or government help-desk
   worker may read the questions aloud, but you should keep your OTP private.
@@ -13,7 +14,7 @@
   <label>Security Check: What is {{ captcha_q }}?</label>
   <input id="captcha" type="text" name="captcha" inputmode="numeric" aria-label="Answer to security check"
          style="max-width:160px">
-  <p><button class="btn" type="submit">Send OTP</button></p>
+  <p><button class="btn" type="submit">{{ t.send_otp }}</button></p>
 </form>
 <p class="note">An OTP will be sent to your mobile number by SMS. OTP is valid for 5 minutes.</p>
 {% endblock %}
