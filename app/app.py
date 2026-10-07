@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Sewa Setu - Old Age Pension Portal
 Government of Purvanchal, Department of Social Welfare
@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 import psycopg2
+from psycopg2 import pool
 from flask import (Flask, request, session, redirect, url_for, render_template,
                    flash, send_file, abort, jsonify)
 from werkzeug.utils import secure_filename
@@ -47,6 +48,7 @@ MIN_AGE = config.getint("pension", "min_age")
 SLA_DAYS = config.getint("pension", "sla_days")
 
 BLOCKS = ["Sonari", "Rajapara", "Dhemaji Pathar", "Borgaon", "Namti", "Khelua"]
+DB_POOL = None
 
 
 def now_ist():
@@ -65,14 +67,34 @@ except Exception:
 
 
 def get_db():
-    return psycopg2.connect(
-        host=config.get("database", "host"),
-        port=config.get("database", "port"),
-        dbname=config.get("database", "name"),
-        user=config.get("database", "user"),
-        password=config.get("database", "password"),
-    )
+    global DB_POOL
+    if DB_POOL is None:
+        DB_POOL = pool.ThreadedConnectionPool(
+            1,
+            int(os.environ.get("SEWASETU_DB_POOL_MAX", "12")),
+            host=config.get("database", "host"),
+            port=config.get("database", "port"),
+            dbname=config.get("database", "name"),
+            user=config.get("database", "user"),
+            password=config.get("database", "password"),
+        )
+    return PooledConnection(DB_POOL, DB_POOL.getconn())
 
+
+class PooledConnection:
+    def __init__(self, connection_pool, connection):
+        self._pool = connection_pool
+        self._connection = connection
+        self._returned = False
+
+    def __getattr__(self, name):
+        return getattr(self._connection, name)
+
+    def close(self):
+        if not self._returned:
+            self._connection.rollback()
+            self._pool.putconn(self._connection)
+            self._returned = True
 
 def sanitize(value, maxlen=100):
     # Limit by characters, never UTF-8 bytes, so Indic names remain intact.
@@ -127,6 +149,37 @@ def about():
     return render_template("about.html")
 
 
+def public_info_page(title, body):
+    return render_template("info.html", title=title, body=body)
+
+
+@app.route("/rti")
+def rti():
+    return public_info_page(
+        "Right to Information",
+        "For RTI requests, contact the District Social Welfare Officer at your "
+        "Block Development Office. Keep your application number with your request.",
+    )
+
+
+@app.route("/grievance")
+def grievance():
+    return public_info_page(
+        "Grievance Cell",
+        "For help with an application, visit your Block Development Office or "
+        "contact the Social Welfare help desk with your application number.",
+    )
+
+
+@app.route("/contact")
+def contact():
+    return public_info_page(
+        "Contact Us",
+        "Department of Social Welfare, Sonapur District. Office hours are "
+        "Monday to Friday, 10:00 to 17:00 IST.",
+    )
+
+
 @app.route("/__gateway/", defaults={"subpath": ""})
 @app.route("/__gateway/<path:subpath>")
 def gateway_proxy(subpath):
@@ -162,9 +215,17 @@ def apply():
         if captcha != str(session.pop("captcha_answer", "")):
             flash("Please solve the security check correctly.")
             return render_template("apply.html", captcha_q=make_captcha())
-        code = str(random.randint(100000, 999999))
         conn = get_db()
         cur = conn.cursor()
+        cur.execute("SELECT count(*) FROM otps WHERE mobile = %s "
+                    "AND created_at > %s",
+                    (mobile, now_ist() - timedelta(minutes=15)))
+        if cur.fetchone()[0] >= 3:
+            cur.close()
+            conn.close()
+            flash("Too many OTP requests. Please try again in 15 minutes.")
+            return render_template("apply.html", captcha_q=make_captcha())
+        code = str(random.randint(100000, 999999))
         cur.execute("INSERT INTO otps (mobile, code, created_at) VALUES (%s, %s, %s)",
                     (mobile, code, now_ist()))
         conn.commit()
@@ -685,3 +746,4 @@ def old_payment_gateway_callback(txn):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=False)
+

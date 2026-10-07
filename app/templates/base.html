@@ -14,7 +14,7 @@ border:1px solid #d7dbe0;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .btn{background:#0b3d6e;color:#fff;border:none;padding:10px 22px;font-size:15px;cursor:pointer}
 .btn:hover{background:#0d4a85}
 label{display:block;margin:12px 0 4px;font-weight:bold;font-size:14px}
-input[type=text],input[type=password],select{width:100%;max-width:420px;padding:8px;
+input[type=text],input[type=password],input[type=file],select{width:100%;max-width:420px;padding:10px;
 border:1px solid #aab;font-size:14px}
 .flash{background:#fdecea;border:1px solid #e57373;color:#a33;padding:10px 14px;margin:14px 0}
 .note{font-size:13px;color:#555}
@@ -34,7 +34,7 @@ table.tbl td,table.tbl th{border:1px solid #ccd;padding:7px 10px;font-size:14px;
 <div class="band"></div>
 <div class="container">
 {% with messages = get_flashed_messages() %}
-  {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+  {% for m in messages %}<div class="flash" role="alert">{{ m }}</div>{% endfor %}
 {% endwith %}
 {% block content %}{% endblock %}
 </div>

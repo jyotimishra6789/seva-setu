@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 
 import psycopg2
 import requests
+from zoneinfo import ZoneInfo
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -26,6 +27,11 @@ with open(CONFIG_PATH) as fh:
 
 SLA_DAYS = config.getint("pension", "sla_days")
 SMS_GATEWAY_URL = config.get("app", "sms_gateway_url")
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def now_ist():
+    return datetime.now(IST).replace(tzinfo=None)
 
 
 def main():
@@ -37,13 +43,14 @@ def main():
         password=config.get("database", "password"),
     )
     cur = conn.cursor()
-    cutoff = datetime.now() - timedelta(days=SLA_DAYS)
+    decision_time = now_ist()
+    cutoff = decision_time - timedelta(days=SLA_DAYS)
     cur.execute(
         """UPDATE applications
            SET status = 'DEEMED_APPROVED', decided_at = %s, decided_by = 'RTPS-AUTO'
            WHERE status = 'PENDING' AND submitted_at < %s
            RETURNING application_no, mobile""",
-        (datetime.now(), cutoff))
+        (decision_time, cutoff))
     rows = cur.fetchall()
     conn.commit()
     for app_no, mobile in rows:
@@ -52,10 +59,11 @@ def main():
                 "to": mobile,
                 "text": "Sewa Setu: your pension application %s stands approved "
                         "under the RTPS Act." % app_no}, timeout=5)
-        except Exception:
-            pass
+        except requests.RequestException as exc:
+            print("SMS notification failed for %s: %s" % (app_no, exc),
+                  file=sys.stderr)
     print("%s deemed approval: %d applications approved"
-          % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), len(rows)))
+          % (decision_time.strftime("%Y-%m-%d %H:%M:%S"), len(rows)))
     cur.close()
     conn.close()
 
