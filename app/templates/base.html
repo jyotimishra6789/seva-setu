@@ -119,8 +119,7 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
     });
   }
   var languageButtons = document.querySelectorAll("[data-language]");
-  if (languageButtons.length && navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function (position) {
+  function showLocationSuggestions(position) {
       var latitude = position.coords.latitude;
       var longitude = position.coords.longitude;
       var suggestions = [];
@@ -167,7 +166,21 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
           suggestedButton.setAttribute("aria-label", "Suggested language: " + suggestedButton.innerText);
         });
       }
-    }, function () {});
+  }
+  function requestLocation() {
+    if (!navigator.geolocation) {
+      document.getElementById("location-help").innerText =
+        "Location suggestions are not available in this browser. Please choose a language.";
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(showLocationSuggestions, function () {
+      document.getElementById("location-help").innerText =
+        "Location was not shared. Please choose a language.";
+    });
+  }
+  var detectButton = document.getElementById("detect-location");
+  if (detectButton) {
+    detectButton.addEventListener("click", requestLocation);
   }
 })();
 </script>
