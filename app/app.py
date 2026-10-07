@@ -35,6 +35,39 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SEWASETU_SECRET_KEY", config.get("app", "secret_key"))
 app.config["PERMANENT_SESSION_LIFETIME"] = 300
 
+LANGUAGES = {
+    "en": {"name": "English", "speech": "en-IN"},
+    "hi": {"name": "हिन्दी", "speech": "hi-IN"},
+    "as": {"name": "অসমীয়া", "speech": "as-IN"},
+    "bn": {"name": "বাংলা", "speech": "bn-IN"},
+}
+
+TRANSLATIONS = {
+    "en": {"title": "Sewa Setu - Old Age Pension Portal",
+           "choose_language": "Choose your language",
+           "language_help": "You can change this later. You do not need to pay anyone to apply.",
+           "continue": "Continue"},
+    "hi": {"title": "सेवा सेतु - वृद्धावस्था पेंशन पोर्टल",
+           "choose_language": "अपनी भाषा चुनें",
+           "language_help": "आप बाद में भाषा बदल सकते हैं। आवेदन करने के लिए किसी को पैसे न दें।",
+           "continue": "आगे बढ़ें"},
+    "as": {"title": "সেৱা সেতু - বৃদ্ধ পেঞ্চন প'ৰ্টেল",
+           "choose_language": "আপোনাৰ ভাষা বাছনি কৰক",
+           "language_help": "আপুনি পিছত ভাষা সলনি কৰিব পাৰে। আবেদন কৰিবলৈ কাকো টকা নিদিব।",
+           "continue": "আগবাঢ়ক"},
+    "bn": {"title": "সেবা সেতু - বার্ধক্য পেনশন পোর্টাল",
+           "choose_language": "আপনার ভাষা বেছে নিন",
+           "language_help": "আপনি পরে ভাষা বদলাতে পারবেন। আবেদন করতে কাউকে টাকা দেবেন না।",
+           "continue": "এগিয়ে যান"},
+}
+
+
+@app.context_processor
+def language_context():
+    language = session.get("language", "en")
+    return {"language": language, "language_info": LANGUAGES[language],
+            "t": TRANSLATIONS[language]}
+
 ADMIN_USERNAME = os.environ.get("SEWASETU_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("SEWASETU_ADMIN_PASSWORD",
                                  config.get("app", "admin_password"))
@@ -156,7 +189,20 @@ def citizen_owns_application(app_id):
 
 @app.route("/")
 def index():
+    if "language" not in session:
+        return redirect(url_for("choose_language"))
     return render_template("index.html", hours_left=deadline_remaining())
+
+
+@app.route("/language", methods=["GET", "POST"])
+def choose_language():
+    if request.method == "POST":
+        language = request.form.get("language", "")
+        if language not in LANGUAGES:
+            abort(400)
+        session["language"] = language
+        return redirect(url_for("index"))
+    return render_template("language.html", languages=LANGUAGES)
 
 
 @app.route("/about")

@@ -44,6 +44,13 @@ class PortalRegressionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 200)
 
+    def test_language_must_be_selected_before_home_page(self):
+        self.assertEqual(self.client.get("/").status_code, 302)
+        response = self.client.post("/language", data={"language": "hi"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/")
+        self.assertEqual(self.client.get("/").status_code, 200)
+
     def test_password_hashes_are_not_deterministic(self):
         first = portal.hash_password("04071950")
         second = portal.hash_password("04071950")

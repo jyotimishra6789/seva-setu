@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="language-choice" data-speech-language="en-IN">
+  <h2>{{ t.choose_language }}</h2>
+  <p class="plain-help" id="location-help">
+    We can suggest a language using your browser language or approximate location.
+    Your location is not stored. You always choose the final language.
+  </p>
+  <div id="voice-status" class="note" role="status" aria-live="polite">
+    Press “Read this page aloud” if you would like spoken help.
+  </div>
+  <button class="btn secondary-btn" type="button" data-speak="page">
+    🔊 Read this page aloud
+  </button>
+  <form method="post" class="language-options" aria-label="Language choices">
+    {% for code, info in languages.items() %}
+    <button class="language-button" type="submit" name="language" value="{{ code }}"
+            data-language="{{ code }}" data-speech="{{ info.speech }}">
+      {{ info.name }}
+    </button>
+    {% endfor %}
+  </form>
+  <p class="note">{{ t.language_help }}</p>
+</div>
+{% endblock %}
