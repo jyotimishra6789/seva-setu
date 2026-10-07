@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="language-choice" data-speech-language="en-IN">
-  <h2>{{ t.choose_language }} / আপোনাৰ ভাষা বাছনি কৰক / अपनी भाषा चुनें</h2>
+  <h2>{{ t.choose_language }}</h2>
   <p class="plain-help" id="location-help">
     {{ t.language_help }}
   </p>
   <div id="location-suggestions" class="plain-help" hidden role="status" aria-live="polite"></div>
   <button id="show-all-languages" class="voice-button" type="button" hidden>
-    🌐 Show all Indian languages / সকলো ভাষা চাওক
+    🌐 {{ t.show_all_languages }}
   </button>
   <button id="detect-location" class="btn secondary-btn" type="button">
-    📍 Detect location for language / ভাষা নিৰ্ণয় কৰক
+    📍 {{ t.detect_language }}
   </button>
   <div id="voice-status" class="note" role="status" aria-live="polite"></div>
   <button class="btn secondary-btn" type="button" data-speak="page">

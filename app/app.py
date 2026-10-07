@@ -59,6 +59,8 @@ TRANSLATIONS = {
         "help": "Need help? This pension service is free. Do not pay an agent or share your OTP.",
         "choose_language": "Choose your language",
         "language_help": "You can change this later at any time. You do not need to pay anyone to apply.",
+        "show_all_languages": "Show all Indian languages",
+        "detect_language": "Detect location for language",
         "continue": "Continue", "change_language": "Change language",
         "read_aloud": "Read this page aloud", "home": "Home",
         "welcome": "Welcome", "apply": "Apply for Pension",
@@ -453,6 +455,60 @@ TRANSLATIONS = {
         "edit_note": "തീരുമാനമാകുന്നതുവരെ വിവരങ്ങൾ തിരുത്താം.", "save_correction": "സേവ് ചെയ്യുക",
         "reset_title": "പാസ്‌വേഡ് റീസെറ്റ്",
         "registered_mobile_label": "രജിസ്റ്റർ ചെയ്ത മൊബൈൽ നമ്പർ", "reset_password_btn": "SMS വഴി പാസ്‌വേഡ് അയയ്ക്കുക",
+    },
+    "mr": {
+        "title": "सेवा सेतू - वृद्धापकाळ निवृत्तीवेतन पोर्टल",
+        "department": "समाज कल्याण विभाग · पूर्वांचल सरकार",
+        "help": "मदत हवी आहे? ही निवृत्तीवेतन सेवा विनामूल्य आहे. एजंटला पैसे देऊ नका किंवा OTP शेअर करू नका.",
+        "choose_language": "आपली भाषा निवडा",
+        "language_help": "आपण ही भाषा नंतर कधीही बदलू शकता. अर्ज करण्यासाठी कोणालाही पैसे देण्याची गरज नाही.",
+        "continue": "पुढे जा", "change_language": "भाषा बदला",
+        "read_aloud": "हे पृष्ठ मोठ्याने वाचा", "home": "मुख्यपृष्ठ",
+        "welcome": "स्वागत आहे", "apply": "निवृत्तीवेतनासाठी अर्ज करा",
+        "scheme": "वृद्धापकाळ निवृत्तीवेतन योजनेअंतर्गत पूर्वांचलमध्ये राहणाऱ्या ६० वर्षे किंवा त्याहून अधिक वयाच्या पात्र ज्येष्ठ नागरिकांना दरमहा रु. २५० निवृत्तीवेतन दिले जाते.",
+        "free_help_detail": "आपण प्रथमच अर्ज करत असल्यास, आपल्या ब्लॉक विकास कार्यालयातील सरकारी मदत कक्ष आपल्याला विनामूल्य मदत करेल. पोचपावती घ्या आणि अर्ज क्रमांक जतन करा.",
+        "window": "अर्जाची मुदत अंदाजे", "closed": "या योजनेसाठी अर्ज करण्याची मुदत संपली आहे.",
+        "steps": [
+            "आपला मोबाइल क्रमांक आणि पाठवलेला एकवेळचा कोड (OTP) टाका.",
+            "वयाच्या पुराव्याच्या कागदपत्रावर जसे नाव आहे तसेच आपले पूर्ण नाव टाका.",
+            "आपला पत्ता आणि बँक खात्याची माहिती टाका. अर्ज सादर करण्यापूर्वी सर्व माहिती तपासता येईल.",
+            "वयाचा पुरावा अपलोड करा (आधार, मतदार ओळखपत्र, रेशन कार्ड किंवा जन्म प्रमाणपत्र, कमाल १० MB).",
+            "शेवटच्या पृष्ठावर माहिती तपासा, अर्ज सादर करा आणि पोचपावती क्रमांक जतन करा."
+        ],
+        "safety": "आपला OTP किंवा बँक PIN कधीही शेअर करू नका. अर्ज सादर करण्यासाठी विभाग कोणतेही शुल्क घेत नाही.",
+        "free_assistance": "विनामूल्य मदतीसाठी जवळच्या ब्लॉक विकास कार्यालयाला भेट द्या किंवा",
+        "hours_suffix": "तास (३१ ऑक्टोबरच्या मध्यरात्री).",
+        "service_footer": "सरकारी नागरिक सेवा · पूर्वांचल समाज कल्याण विभाग",
+        "about": "योजनेबद्दल", "rti": "माहितीचा अधिकार", "grievance": "तक्रार कक्ष", "contact": "संपर्क करा",
+        "status": "अर्जाची स्थिती तपासा", "free_help": "अर्ज करण्यासाठी कोणालाही पैसे देण्याची गरज नाही.",
+        "how_to_apply": "अर्ज कसा करावा", "apply_help": "विनामूल्य मदतीसाठी जवळच्या ब्लॉक विकास कार्यालयाला भेट द्या.",
+        "step1_label": "टप्पा १/६: मोबाइल पडताळणी", "mobile_verification": "मोबाइल पडताळणी", "send_otp": "OTP पाठवा",
+        "mobile_label": "मोबाइल क्रमांक", "mobile_placeholder": "१० अंकी मोबाइल क्रमांक",
+        "security_check": "सुरक्षा तपासणी: किती आहे", "otp_note": "आपल्या मोबाइल क्रमांकावर SMS द्वारे OTP पाठवला जाईल. OTP १० मिनिटांसाठी वैध आहे.",
+        "enter_otp": "OTP टाका", "otp_sent_to": "या क्रमांकावर OTP पाठवला आहे:", "otp_label": "६ अंकी OTP टाका", "verify_button": "पडताळा आणि पुढे जा",
+        "step2_title": "टप्पा २/६: वैयक्तिक माहिती", "personal_details": "वैयक्तिक माहिती",
+        "applicant_name_label": "अर्जदाराचे पूर्ण नाव (वयाच्या पुराव्याप्रमाणे)", "dob_label": "जन्मतारीख (DD/MM/YYYY)", "dob_placeholder": "दिवस/महिना/वर्ष",
+        "gender_label": "लिंग", "gender_select": "--लिंग निवडा--", "gender_male": "पुरुष", "gender_female": "महिला", "gender_other": "इतर",
+        "marital_status_label": "वैवाहिक स्थिती", "marital_select": "--स्थिती निवडा--", "marital_married": "विवाहित", "marital_unmarried": "अविवाहित", "marital_widowed": "विधवा/विधुर",
+        "husband_name_label": "पतीचे नाव (विवाहित महिलांसाठी)", "husband_employer_label": "पतीचा नियोक्ता (ऐच्छिक)",
+        "husband_help": "टीप: जोडीदाराची माहिती ऐच्छिक असून ती फक्त विवाहित अर्जदारांसाठी लागू आहे.", "mandatory_note": "* चिन्हांकित फील्ड अनिवार्य आहेत.", "save_continue": "जतन करा आणि पुढे जा",
+        "step3_title": "टप्पा ३/६: पत्त्याची माहिती", "address_details": "पत्त्याची माहिती", "village_label": "गाव / शहर", "block_label": "ब्लॉक", "block_select": "--ब्लॉक निवडा--",
+        "step4_title": "टप्पा ४/६: बँक माहिती", "bank_details_title": "निवृत्तीवेतन जमा करण्यासाठी बँक माहिती", "bank_account_label": "बँक खाते क्रमांक", "ifsc_label": "IFSC कोड",
+        "dbt_note": "निवृत्तीवेतन थेट लाभ हस्तांतरणाद्वारे (DBT) या खात्यात जमा केले जाईल. खाते अर्जदाराच्या नावावर असावे.",
+        "step5_title": "टप्पा ५/६: कागदपत्र अपलोड", "upload_heading": "वयाचा पुरावा अपलोड करा",
+        "upload_help": "स्वीकारलेली कागदपत्रे: आधार कार्ड, मतदार ओळखपत्र, रेशन कार्ड, जन्म प्रमाणपत्र किंवा शाळेचे प्रमाणपत्र. JPG, PNG किंवा PDF (१० MB पर्यंत).",
+        "select_doc": "कागदपत्र निवडा", "upload_button": "अपलोड करा आणि पुढे जा",
+        "step6_title": "टप्पा ६/६: तपासणी आणि घोषणा", "review_heading": "अर्जाच्या माहितीची तपासणी करा", "review_subheading": "अर्ज सादर करण्यापूर्वी सर्व माहिती अचूक असल्याची खात्री करा.",
+        "edit_link": "दुरुस्त करा", "uploaded_doc_label": "अपलोड केलेले कागदपत्र", "doc_uploaded": "कागदपत्र यशस्वीरीत्या अपलोड झाले",
+        "declaration_heading": "घोषणा", "declaration_text": "वर दिलेली माहिती माझ्या माहितीनुसार खरी आहे, अशी मी घोषणा करतो/करते. चुकीची माहिती दिल्यास लागू कायद्यानुसार शिक्षा होऊ शकते आणि निवृत्तीवेतन रद्द केले जाऊ शकते.",
+        "agree_checkbox": "मी वरील घोषणेशी सहमत आहे.", "submit_btn": "अर्ज सादर करा", "submitted_heading": "अर्ज यशस्वीरीत्या सादर झाला", "submitted_msg": "आपला निवृत्तीवेतन अर्ज प्राप्त झाला आहे.",
+        "app_no_label": "अर्ज क्रमांक", "app_received_note": "आपला अर्ज क्रमांक लिहून ठेवा. नोंदणीकृत मोबाइल क्रमांक वापरून अर्जाची स्थिती तपासता येईल.",
+        "download_ack": "पोचपावती डाउनलोड करा (PDF)", "status_portal_title": "नागरिक स्थिती पोर्टल", "password_label": "पासवर्ड (जन्मतारीख DDMMYYYY स्वरूपात)",
+        "login_btn": "लॉगिन", "forgot_password": "पासवर्ड विसरलात?", "app_status_title": "अर्जाची स्थिती", "status_label": "सध्याची स्थिती", "submitted_at_label": "सादर केल्याची तारीख", "decided_at_label": "निर्णयाची तारीख",
+        "correct_details_btn": "अर्जाची माहिती दुरुस्त करा", "withdraw_btn": "प्रलंबित अर्ज मागे घ्या", "edit_heading": "प्रलंबित अर्ज दुरुस्त करा",
+        "edit_note": "अर्ज प्रलंबित असेपर्यंत माहिती दुरुस्त करता येईल.", "save_correction": "दुरुस्ती जतन करा", "reset_title": "पासवर्ड रीसेट करा",
+        "registered_mobile_label": "नोंदणीकृत मोबाइल क्रमांक", "reset_password_btn": "SMS द्वारे पासवर्ड पाठवा",
+        "show_all_languages": "सर्व भारतीय भाषा दाखवा", "detect_language": "भाषेसाठी स्थान शोधा",
     }
 }
 
@@ -481,10 +537,9 @@ def language_context():
 
 @app.before_request
 def require_language_before_citizen_flow():
-    # If a citizen visits the public application flow or homepage without choosing a language,
-    # route them to the language selection page first.
+    # The homepage shows the language chooser itself; protect the application flow.
     protected_endpoints = {
-        "index", "apply", "verify", "form_step", "upload",
+        "apply", "verify", "form_step", "upload",
         "declaration", "status_login", "view_application",
         "edit_application", "withdraw_application", "reset_password",
     }
@@ -634,9 +689,12 @@ def citizen_owns_application(app_id):
 
 @app.route("/")
 def index():
-    if "language" not in session:
-        return redirect(url_for("choose_language"))
-    return render_template("index.html", hours_left=deadline_remaining())
+    return render_template(
+        "index.html",
+        hours_left=deadline_remaining(),
+        languages=LANGUAGES,
+        show_language_modal="language" not in session,
+    )
 
 
 @app.route("/language", methods=["GET", "POST"])

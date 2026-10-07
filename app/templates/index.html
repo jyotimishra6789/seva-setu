@@ -1,5 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
+{% if show_language_modal %}
+<div class="language-modal" role="dialog" aria-modal="true" aria-labelledby="language-modal-title">
+  <div class="language-modal-card">
+    <h2 id="language-modal-title">{{ t.choose_language }}</h2>
+    <p class="plain-help">{{ t.language_help }}</p>
+    <form method="post" action="/language" class="language-options" aria-label="Language choices">
+      {% for code, info in languages.items() %}
+      <button class="language-button" type="submit" name="language" value="{{ code }}">
+        {{ info.name }}
+      </button>
+      {% endfor %}
+    </form>
+  </div>
+</div>
+{% endif %}
 <div class="page-tools"><button class="voice-button" type="button" data-speak="global">🔊 {{ t.read_aloud }}</button></div>
 <h2>{{ t.welcome }}</h2>
 <p>{{ t.scheme }}</p>

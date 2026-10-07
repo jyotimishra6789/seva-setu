@@ -47,10 +47,12 @@ class PortalRegressionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.client.get(path).status_code, 200)
 
-    def test_language_must_be_selected_before_home_page(self):
+    def test_home_page_shows_language_modal_before_selection(self):
         with self.client.session_transaction() as session:
             session.pop("language", None)
-        self.assertEqual(self.client.get("/").status_code, 302)
+        home = self.client.get("/")
+        self.assertEqual(home.status_code, 200)
+        self.assertIn(b"language-modal", home.data)
         self.assertEqual(self.client.get("/apply").status_code, 302)
         response = self.client.post("/language", data={"language": "hi"})
         self.assertEqual(response.status_code, 302)
@@ -108,7 +110,7 @@ class PortalRegressionTests(unittest.TestCase):
         self.assertIn(b"XXXXXXXX9012", response.data)
 
     def test_language_translations_propagate_to_all_pages(self):
-        for lang in ("as", "hi", "bn"):
+        for lang in ("as", "hi", "bn", "mr"):
             with self.client.session_transaction() as session:
                 session["language"] = lang
             res = self.client.get("/")
@@ -118,6 +120,14 @@ class PortalRegressionTests(unittest.TestCase):
             # Verify page contains localized department text
             expected_dept = portal.TRANSLATIONS[lang]["department"].encode("utf-8")
             self.assertIn(expected_dept, res.data)
+
+    def test_marathi_language_is_used_after_selection(self):
+        response = self.client.post("/language", data={"language": "mr"})
+        self.assertEqual(response.status_code, 302)
+        home = self.client.get("/")
+        self.assertIn("स्वागत आहे".encode("utf-8"), home.data)
+        self.assertIn("निवृत्तीवेतनासाठी अर्ज करा".encode("utf-8"), home.data)
+        self.assertNotIn(b"Welcome", home.data)
 
     def test_login_rate_limiting(self):
         mobile = "9111111111"
