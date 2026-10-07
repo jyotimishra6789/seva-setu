@@ -445,15 +445,32 @@ def generate_acknowledgment(cur, app_id):
     row = cur.fetchone()
     pdf = FPDF()
     pdf.add_page()
-    unicode_font = "/usr/share/fonts/truetype/noto/NotoSansBengali-Regular.ttf"
-    unicode_bold = "/usr/share/fonts/truetype/noto/NotoSansBengali-Bold.ttf"
-    has_unicode_font = os.path.exists(unicode_font) and os.path.exists(unicode_bold)
+    font_dir = "/usr/share/fonts/truetype/noto"
+    regular_font = os.path.join(font_dir, "NotoSans-Regular.ttf")
+    bold_font = os.path.join(font_dir, "NotoSans-Bold.ttf")
+    has_unicode_font = os.path.exists(regular_font) and os.path.exists(bold_font)
     if has_unicode_font:
-        pdf.add_font("Noto", "", unicode_font)
-        pdf.add_font("Noto", "B", unicode_bold)
-    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "B", 14)
+        pdf.add_font("NotoSans", "", regular_font)
+        pdf.add_font("NotoSans", "B", bold_font)
+        fallback_fonts = []
+        fallback_scripts = (
+            "Arabic", "Armenian", "Bengali", "CanadianAboriginal",
+            "Devanagari", "Ethiopic", "Georgian", "Gujarati", "Gurmukhi",
+            "Hebrew", "Kannada", "Khmer", "Lao", "Malayalam", "Myanmar",
+            "Oriya", "Sinhala", "Symbols2", "Tamil", "Telugu", "Thai",
+        )
+        for script in fallback_scripts:
+            path = os.path.join(font_dir, "NotoSans%s-Regular.ttf" % script)
+            if not os.path.exists(path):
+                continue
+            family = "NotoFallback" + str(len(fallback_fonts))
+            pdf.add_font(family, "", path)
+            fallback_fonts.append(family)
+        pdf.set_fallback_fonts(fallback_fonts, exact_match=False)
+    font_family = "NotoSans" if has_unicode_font else "Helvetica"
+    pdf.set_font(font_family, "B", 14)
     pdf.cell(0, 10, "GOVERNMENT OF PURVANCHAL", ln=1, align="C")
-    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "", 11)
+    pdf.set_font(font_family, "", 11)
     pdf.cell(0, 8, "Department of Social Welfare", ln=1, align="C")
     pdf.cell(0, 8, "Old Age Pension Scheme - Acknowledgment", ln=1, align="C")
     pdf.ln(4)
@@ -464,7 +481,7 @@ def generate_acknowledgment(cur, app_id):
         pdf.line(x, 12, x + 0.5, 12)
     labels = ["Application No", "Applicant Name", "Mobile", "Date of Birth",
               "Village", "Block", "Bank Account", "IFSC", "Submitted At", "Status"]
-    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "", 10)
+    pdf.set_font(font_family, "", 10)
     for label, val in zip(labels, row):
         try:
             pdf.cell(60, 8, label, border=1)
@@ -472,7 +489,7 @@ def generate_acknowledgment(cur, app_id):
         except Exception:
             pdf.cell(0, 8, "?", border=1, ln=1)
     pdf.ln(6)
-    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "", 9)
+    pdf.set_font(font_family, "", 9)
     pdf.multi_cell(0, 5, "This is a computer generated acknowledgment. Processing SLA "
                          "as per the Purvanchal Right to Public Services Act applies.")
     return bytes(pdf.output())
