@@ -4,25 +4,32 @@
 <meta charset="utf-8">
 <title>Sewa Setu - Old Age Pension Portal</title>
 <style>
-body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f0f2f5;color:#222;font-size:16px}
+body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f0f2f5;color:#222;font-size:18px;line-height:1.5}
 .header{background:#0b3d6e;color:#fff;padding:14px 28px}
-.header h1{margin:0;font-size:22px}
-.header .sub{font-size:13px;color:#cfe0f3}
+.header h1{margin:0;font-size:26px}
+.header .sub{font-size:16px;color:#cfe0f3}
 .band{background:#f7931e;height:5px}
-.container{max-width:860px;margin:24px auto;background:#fff;padding:28px;
+.container{max-width:860px;margin:24px auto;background:#fff;padding:32px;
 border:1px solid #d7dbe0;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.btn{background:#0b3d6e;color:#fff;border:none;padding:10px 22px;font-size:15px;cursor:pointer}
+.btn{display:inline-block;background:#0b3d6e;color:#fff;border:none;border-radius:4px;
+padding:14px 24px;font-size:18px;cursor:pointer;min-height:48px}
 .btn:hover{background:#0d4a85}
-label{display:block;margin:12px 0 4px;font-weight:bold;font-size:14px}
-input[type=text],input[type=password],input[type=file],select{width:100%;max-width:420px;padding:10px;
-border:1px solid #aab;font-size:14px}
-.flash{background:#fdecea;border:1px solid #e57373;color:#a33;padding:10px 14px;margin:14px 0}
-.note{font-size:13px;color:#555}
-.footer{max-width:860px;margin:10px auto 40px;font-size:12px;color:#666;text-align:center}
+label{display:block;margin:18px 0 6px;font-weight:bold;font-size:18px}
+input[type=text],input[type=password],input[type=file],select{width:100%;max-width:520px;
+box-sizing:border-box;padding:13px;border:2px solid #8896a7;border-radius:3px;font-size:18px;min-height:48px}
+input:focus,select:focus,button:focus,a:focus{outline:4px solid #f7931e;outline-offset:2px}
+.flash{background:#fdecea;border:1px solid #e57373;color:#8b1e1e;padding:14px 16px;margin:14px 0}
+.note{font-size:16px;color:#444}
+.help-banner{background:#fff4d6;border:2px solid #e0a400;padding:16px;margin:0 0 24px}
+.help-banner strong{color:#6b4700}
+.footer{max-width:860px;margin:10px auto 40px;font-size:16px;color:#444;text-align:center}
 .footer a{color:#0b3d6e;margin:0 8px}
 table.tbl{border-collapse:collapse;width:100%}
-table.tbl td,table.tbl th{border:1px solid #ccd;padding:7px 10px;font-size:14px;text-align:left}
-.steps{font-size:13px;color:#777;margin-bottom:18px}
+table.tbl td,table.tbl th{border:1px solid #ccd;padding:10px;font-size:16px;text-align:left}
+.steps{font-size:17px;color:#555;margin-bottom:18px}
+.plain-help{background:#eef6ff;border-left:5px solid #0b3d6e;padding:12px 16px;margin:18px 0}
+@media(max-width:600px){.header{padding:14px 18px}.container{margin:0;padding:22px 18px;border:0}
+.header h1{font-size:22px}.btn{width:100%}.footer{padding:0 12px}.footer a{display:inline-block;margin:5px}}
 .steps b{color:#0b3d6e}
 </style>
 </head>
@@ -33,6 +40,11 @@ table.tbl td,table.tbl th{border:1px solid #ccd;padding:7px 10px;font-size:14px;
 </div>
 <div class="band"></div>
 <div class="container">
+<div class="help-banner" role="note">
+  <strong>Need help?</strong> This pension service is free. Do not pay an agent or share
+  your OTP. For free assistance, visit your nearest Block Development Office or use
+  <a href="/grievance">Grievance Cell</a> / <a href="/contact">Contact Us</a>.
+</div>
 {% with messages = get_flashed_messages() %}
   {% for m in messages %}<div class="flash" role="alert">{{ m }}</div>{% endfor %}
 {% endwith %}
