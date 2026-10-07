@@ -57,6 +57,15 @@ class PortalRegressionTests(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/")
         self.assertEqual(self.client.get("/").status_code, 200)
 
+    def test_selected_language_redirects_to_localized_home(self):
+        response = self.client.post("/language", data={"language": "ml"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/")
+        home = self.client.get("/")
+        self.assertEqual(home.status_code, 200)
+        self.assertIn("സേവാ സേതു".encode("utf-8"), home.data)
+        self.assertEqual(home.headers["Cache-Control"], "no-store, max-age=0")
+
     def test_password_hashes_are_not_deterministic(self):
         first = portal.hash_password("04071950")
         second = portal.hash_password("04071950")

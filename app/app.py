@@ -492,6 +492,14 @@ def require_language_before_citizen_flow():
         return redirect(url_for("choose_language"))
 
 
+@app.after_request
+def prevent_stale_language_pages(response):
+    if response.content_type.startswith("text/html"):
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
 ADMIN_USERNAME = os.environ.get("SEWASETU_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("SEWASETU_ADMIN_PASSWORD",
                                  config.get("app", "admin_password"))
