@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Correct Pending Application</h2>
+<p class="note">Corrections are allowed while the application is pending. This does not
+reset the statutory processing clock.</p>
+<form method="post">
+  <label>Applicant Name</label>
+  <input type="text" name="applicant_name" value="{{ a[1] }}" required>
+  <label>Date of Birth (DD/MM/YYYY)</label>
+  <input type="text" name="dob" value="{{ a[2].strftime('%d/%m/%Y') }}" required>
+  <label>Gender</label>
+  <input type="text" name="gender" value="{{ a[3] }}">
+  <label>Marital Status</label>
+  <input type="text" name="marital_status" value="{{ a[4] }}">
+  <label>Husband's Name</label>
+  <input type="text" name="husband_name" value="{{ a[5] or '' }}">
+  <label>Husband's Current Employer</label>
+  <input type="text" name="husband_employer" value="{{ a[6] or '' }}">
+  <label>Village / Town</label>
+  <input type="text" name="village" value="{{ a[7] }}" required>
+  <label>Block</label>
+  <select name="block" required>
+    {% for block in blocks %}
+    <option value="{{ block }}" {% if a[8] == block %}selected{% endif %}>{{ block }}</option>
+    {% endfor %}
+  </select>
+  <label>Bank Account Number</label>
+  <input type="text" name="bank_account" value="{{ a[9] }}" required>
+  <label>IFSC Code</label>
+  <input type="text" name="ifsc" value="{{ a[10] }}" required>
+  <p><button class="btn" type="submit">Save Correction</button></p>
+</form>
+{% endblock %}
