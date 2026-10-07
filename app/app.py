@@ -12,6 +12,7 @@ import io
 import csv
 import random
 import hashlib
+import hmac
 import configparser
 import secrets
 from datetime import datetime, date, timedelta
@@ -104,7 +105,21 @@ def sanitize(value, maxlen=100):
 
 
 def hash_password(p):
-    return hashlib.sha256(p.encode("utf-8")).hexdigest()
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac("sha256", p.encode("utf-8"), salt, 310000)
+    return "pbkdf2_sha256$310000$%s$%s" % (
+        salt.hex(), digest.hex())
+
+
+def verify_password(stored, supplied):
+    if stored.startswith("pbkdf2_sha256$"):
+        _, iterations, salt_hex, digest_hex = stored.split("$", 3)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256", supplied.encode("utf-8"), bytes.fromhex(salt_hex),
+            int(iterations))
+        return hmac.compare_digest(digest.hex(), digest_hex)
+    return hmac.compare_digest(stored, hashlib.sha256(
+        supplied.encode("utf-8")).hexdigest())
 
 
 def send_sms(mobile, text):
@@ -476,10 +491,18 @@ def status_login():
         cur.execute("SELECT password_hash FROM portal_users WHERE mobile = %s", (mobile,))
         row = cur.fetchone()
         cur.close(); conn.close()
-        if row and row[0] == hash_password(password):
+        if row and verify_password(row[0], password):
             session["logged_in"] = True
             session["admin"] = False
             session["portal_mobile"] = mobile
+            if not row[0].startswith("pbkdf2_sha256$"):
+                conn = get_db()
+                cur = conn.cursor()
+                cur.execute("UPDATE portal_users SET password_hash = %s "
+                            "WHERE mobile = %s", (hash_password(password), mobile))
+                conn.commit()
+                cur.close()
+                conn.close()
             conn = get_db()
             cur = conn.cursor()
             cur.execute("SELECT id FROM applications WHERE mobile = %s "
@@ -746,4 +769,3 @@ def old_payment_gateway_callback(txn):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=False)
-

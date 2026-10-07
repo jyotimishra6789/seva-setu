@@ -7,6 +7,13 @@ environment. Do not use the sample values in `app/config/app.ini` for a public
 deployment. The application deadline is interpreted in `Asia/Kolkata`, not in
 the container's timezone.
 
+For an existing database, run the schema migration before enabling the new
+password-hash migration:
+
+```sql
+ALTER TABLE portal_users ALTER COLUMN password_hash TYPE TEXT;
+```
+
 ## Deemed approval
 
 The scheduler runs `app/scripts/deemed_approval.py` at 02:00 each day. It reads
@@ -22,6 +29,11 @@ SELECT status, count(*) FROM applications GROUP BY status;
 The `applications_status_submitted_idx` index supports both the nightly job and
 the pending dashboard. Existing records are not deleted by corrections or
 withdrawals; withdrawn rows remain available for audit.
+
+The web process uses a bounded PostgreSQL connection pool. Set
+`SEWASETU_DB_POOL_MAX` if the deployment has a different database connection
+budget; keep the total across web workers and scheduled jobs below PostgreSQL's
+`max_connections`.
 
 ## Citizen support
 

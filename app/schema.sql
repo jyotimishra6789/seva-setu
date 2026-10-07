@@ -36,8 +36,10 @@ CREATE INDEX IF NOT EXISTS applications_status_submitted_idx
 -- Status portal accounts (created at submission time)
 CREATE TABLE IF NOT EXISTS portal_users (
     mobile        VARCHAR(15) PRIMARY KEY,
-    password_hash VARCHAR(80)
+    password_hash TEXT
 );
+
+ALTER TABLE portal_users ALTER COLUMN password_hash TYPE TEXT;
 
 CREATE TABLE IF NOT EXISTS otps (
     id         SERIAL PRIMARY KEY,

@@ -39,6 +39,18 @@ class PortalRegressionTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"security check", response.data)
 
+    def test_support_links_are_available(self):
+        for path in ("/rti", "/grievance", "/contact"):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 200)
+
+    def test_password_hashes_are_not_deterministic(self):
+        first = portal.hash_password("04071950")
+        second = portal.hash_password("04071950")
+        self.assertNotEqual(first, second)
+        self.assertTrue(portal.verify_password(first, "04071950"))
+        self.assertFalse(portal.verify_password(first, "wrong"))
+
 
 if __name__ == "__main__":
     unittest.main()
