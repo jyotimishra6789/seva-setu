@@ -124,25 +124,44 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
       var latitude = position.coords.latitude;
       var longitude = position.coords.longitude;
       var suggestions = [];
-      if (latitude >= 8 && latitude <= 13 && longitude >= 74 && longitude <= 78) {
+      if (latitude >= 8.2 && latitude <= 12.8 && longitude >= 74.8 && longitude <= 77.4) {
         suggestions = ["ml", "en"];
-      } else if (latitude >= 8 && latitude <= 13 && longitude >= 77 && longitude <= 80) {
-        suggestions = ["en"];
-      } else if (latitude >= 15 && latitude <= 20 && longitude >= 73 && longitude <= 80) {
+      } else if (latitude >= 8 && latitude <= 13.5 && longitude >= 77.4 && longitude <= 80.4) {
+        suggestions = ["ta", "en"];
+      } else if (latitude >= 11.5 && latitude <= 18.5 && longitude >= 74 && longitude <= 78.6) {
+        suggestions = ["kn", "en"];
+      } else if (latitude >= 12 && latitude <= 19.5 && longitude >= 77.5 && longitude <= 84) {
+        suggestions = ["te", "en"];
+      } else if (latitude >= 15.5 && latitude <= 22.2 && longitude >= 72.5 && longitude <= 80) {
+        suggestions = ["mr", "en"];
+      } else if (latitude >= 19 && latitude <= 25 && longitude >= 68 && longitude <= 74.5) {
+        suggestions = ["gu", "en"];
+      } else if (latitude >= 24 && latitude <= 35 && longitude >= 73 && longitude <= 80) {
         suggestions = ["hi", "en"];
-      } else if (latitude >= 24 && latitude <= 28) {
-        suggestions = ["hi", "en"];
+      } else if (latitude >= 18 && latitude <= 23 && longitude >= 81 && longitude <= 88) {
+        suggestions = ["or", "en"];
+      } else if (latitude >= 21 && latitude <= 27 && longitude >= 88 && longitude <= 97) {
+        suggestions = ["bn", "as", "en"];
       }
       suggestions = suggestions.filter(function (code) {
         return document.querySelector("[data-language='" + code + "']");
       });
       if (suggestions.length) {
+        languageButtons.forEach(function (button) {
+          button.hidden = suggestions.indexOf(button.dataset.language) === -1;
+        });
         var suggestionBox = document.getElementById("location-suggestions");
         suggestionBox.hidden = false;
-        suggestionBox.innerText = "Suggested languages for your area: " +
+        suggestionBox.innerText = "Languages most spoken in your area: " +
           suggestions.map(function (code) {
             return document.querySelector("[data-language='" + code + "']").innerText;
           }).join(" / ") + ". Please choose any language.";
+        var showAll = document.getElementById("show-all-languages");
+        showAll.hidden = false;
+        showAll.addEventListener("click", function () {
+          languageButtons.forEach(function (button) { button.hidden = false; });
+          showAll.hidden = true;
+        });
         suggestions.forEach(function (code) {
           var suggestedButton = document.querySelector("[data-language='" + code + "']");
           suggestedButton.setAttribute("aria-label", "Suggested language: " + suggestedButton.innerText);

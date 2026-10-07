@@ -41,6 +41,13 @@ LANGUAGES = {
     "as": {"name": "অসমীয়া", "speech": "as-IN"},
     "bn": {"name": "বাংলা", "speech": "bn-IN"},
     "ml": {"name": "മലയാളം", "speech": "ml-IN"},
+    "ta": {"name": "தமிழ்", "speech": "ta-IN"},
+    "te": {"name": "తెలుగు", "speech": "te-IN"},
+    "kn": {"name": "ಕನ್ನಡ", "speech": "kn-IN"},
+    "mr": {"name": "मराठी", "speech": "mr-IN"},
+    "gu": {"name": "ગુજરાતી", "speech": "gu-IN"},
+    "pa": {"name": "ਪੰਜਾਬੀ", "speech": "pa-IN"},
+    "or": {"name": "ଓଡ଼ିଆ", "speech": "or-IN"},
 }
 
 TRANSLATIONS = {
