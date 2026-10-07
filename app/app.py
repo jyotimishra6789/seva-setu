@@ -21,6 +21,7 @@ import requests
 import psycopg2
 from flask import (Flask, request, session, redirect, url_for, render_template,
                    flash, send_file, abort, jsonify)
+from werkzeug.utils import secure_filename
 from fpdf import FPDF
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -46,6 +47,10 @@ MIN_AGE = config.getint("pension", "min_age")
 SLA_DAYS = config.getint("pension", "sla_days")
 
 BLOCKS = ["Sonari", "Rajapara", "Dhemaji Pathar", "Borgaon", "Namti", "Khelua"]
+
+
+def now_ist():
+    return datetime.now(IST).replace(tzinfo=None)
 
 import logging
 _logdir = "/var/log/sewasetu"
@@ -161,7 +166,7 @@ def apply():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("INSERT INTO otps (mobile, code, created_at) VALUES (%s, %s, %s)",
-                    (mobile, code, datetime.now()))
+                    (mobile, code, now_ist()))
         conn.commit()
         cur.close(); conn.close()
         send_sms(mobile, "Your Sewa Setu OTP is %s. Valid for 5 minutes." % code)
@@ -191,7 +196,7 @@ def verify():
         row = cur.fetchone()
         cur.close(); conn.close()
         if row and row[0] == code:
-            age = (datetime.now() - row[1]).total_seconds()
+            age = (now_ist() - row[1]).total_seconds()
             if age > OTP_VALIDITY_SECONDS:
                 app.logger.warning("otp expired mobile=%s age=%ds" % (mobile, int(age)))
                 flash("OTP expired. Please request a new OTP.")
@@ -231,16 +236,18 @@ def upload():
         if f is None or f.filename == "":
             flash("ERR_VAL_47")
             return render_template("upload.html")
-        filename = f.filename.lower()
+        filename = secure_filename(f.filename)
         content = f.read()
-        if not filename.endswith(".pdf"):
-            flash("ERR_VAL_47")
+        extension = os.path.splitext(filename)[1].lower()
+        if extension not in (".pdf", ".jpg", ".jpeg"):
+            flash("Please upload a PDF or JPG document.")
             return render_template("upload.html")
-        if len(content) > 102400:
-            flash("ERR_VAL_47")
+        if len(content) > 5 * 1024 * 1024:
+            flash("The document must be 5 MB or smaller.")
             return render_template("upload.html")
         os.makedirs(UPLOAD_DIR, exist_ok=True)
-        path = os.path.join(UPLOAD_DIR, "%s_%s" % (session["verified_mobile"], filename))
+        filename = "%s_%s%s" % (session["verified_mobile"], secrets.token_hex(8), extension)
+        path = os.path.join(UPLOAD_DIR, filename)
         with open(path, "wb") as out:
             out.write(content)
         session["doc_path"] = path
@@ -327,7 +334,7 @@ def handle_submission():
            RETURNING id""",
         (app_no, name, mobile, dob, gender, marital, husband_name,
          husband_employer, village, block, bank_account, ifsc, doc_path,
-         datetime.now()))
+         now_ist()))
     new_id = cur.fetchone()[0]
 
     # status portal account; password is DOB as DDMMYYYY per dept. circular
@@ -361,9 +368,15 @@ def generate_acknowledgment(cur, app_id):
     row = cur.fetchone()
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 14)
+    unicode_font = "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"
+    unicode_bold = "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf"
+    has_unicode_font = os.path.exists(unicode_font) and os.path.exists(unicode_bold)
+    if has_unicode_font:
+        pdf.add_font("Noto", "", unicode_font)
+        pdf.add_font("Noto", "B", unicode_bold)
+    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "B", 14)
     pdf.cell(0, 10, "GOVERNMENT OF PURVANCHAL", ln=1, align="C")
-    pdf.set_font("Helvetica", "", 11)
+    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "", 11)
     pdf.cell(0, 8, "Department of Social Welfare", ln=1, align="C")
     pdf.cell(0, 8, "Old Age Pension Scheme - Acknowledgment", ln=1, align="C")
     pdf.ln(4)
@@ -374,7 +387,7 @@ def generate_acknowledgment(cur, app_id):
         pdf.line(x, 12, x + 0.5, 12)
     labels = ["Application No", "Applicant Name", "Mobile", "Date of Birth",
               "Village", "Block", "Bank Account", "IFSC", "Submitted At", "Status"]
-    pdf.set_font("Helvetica", "", 10)
+    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "", 10)
     for label, val in zip(labels, row):
         try:
             pdf.cell(60, 8, label, border=1)
@@ -382,7 +395,7 @@ def generate_acknowledgment(cur, app_id):
         except Exception:
             pdf.cell(0, 8, "?", border=1, ln=1)
     pdf.ln(6)
-    pdf.set_font("Helvetica", "I", 9)
+    pdf.set_font("Noto" if has_unicode_font else "Helvetica", "", 9)
     pdf.multi_cell(0, 5, "This is a computer generated acknowledgment. Processing SLA "
                          "as per the Purvanchal Right to Public Services Act applies.")
     return bytes(pdf.output())
@@ -476,7 +489,8 @@ def edit_application(app_id):
              form.get("marital_status", ""), sanitize(form.get("husband_name")),
              sanitize(form.get("husband_employer")), sanitize(form.get("village")),
              form.get("block", ""), form.get("bank_account", "").strip(),
-             form.get("ifsc", "").strip().upper(), app_id, session["portal_mobile"]))
+             form.get("ifsc", "").strip().upper(), now_ist(),
+             app_id, session["portal_mobile"]))
         conn.commit()
         cur.close()
         conn.close()
@@ -495,7 +509,7 @@ def withdraw_application(app_id):
     cur = conn.cursor()
     cur.execute("UPDATE applications SET status='WITHDRAWN', decided_at=%s, "
                 "decided_by='CITIZEN' WHERE id=%s AND mobile=%s AND status='PENDING'",
-                (datetime.now(), app_id, session["portal_mobile"]))
+                (now_ist(), app_id, session["portal_mobile"]))
     conn.commit()
     cur.close()
     conn.close()
@@ -573,7 +587,7 @@ def admin_dashboard():
     cur.execute("SELECT status, count(*) FROM applications GROUP BY status")
     by_status = cur.fetchall()
     cur.execute("SELECT count(*) FROM applications WHERE status = 'PENDING' "
-                "AND submitted_at < %s", (datetime.now() - timedelta(days=SLA_DAYS),))
+                "AND submitted_at < %s", (now_ist() - timedelta(days=SLA_DAYS),))
     overdue = cur.fetchone()[0]
     cur.execute("SELECT block, count(*) FROM applications WHERE status = 'PENDING' "
                 "GROUP BY block ORDER BY count(*) DESC")
@@ -624,7 +638,7 @@ def admin_approve(app_id):
     conn = get_db()
     cur = conn.cursor()
     cur.execute("UPDATE applications SET status = 'APPROVED', decided_at = %s "
-                "WHERE id = %s", (datetime.now(), app_id))
+                "WHERE id = %s", (now_ist(), app_id))
     conn.commit()
     cur.close(); conn.close()
     flash("Application approved.")
@@ -638,7 +652,7 @@ def admin_reject(app_id):
     conn = get_db()
     cur = conn.cursor()
     cur.execute("UPDATE applications SET status = 'REJECTED', decided_at = %s "
-                "WHERE id = %s", (datetime.now(), app_id))
+                "WHERE id = %s", (now_ist(), app_id))
     conn.commit()
     cur.close(); conn.close()
     flash("Application rejected.")

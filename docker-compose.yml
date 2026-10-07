@@ -9,14 +9,21 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./app/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./seed/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sewasetu -d sewasetu"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   app:
     build: ./app
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - smsgw
+      db:
+        condition: service_healthy
+      smsgw:
+        condition: service_started
     volumes:
       - uploads:/var/sewasetu/uploads
       - applogs:/var/log/sewasetu
@@ -25,7 +32,8 @@ services:
     build: ./app
     command: ["cron", "-f"]
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - applogs:/var/log/sewasetu
 

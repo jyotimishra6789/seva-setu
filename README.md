@@ -13,6 +13,15 @@ docker compose up --build
   "sent" OTPs appear here once delivered. The gateway runs on the internal
   network and is served through the portal, so only one port is exposed.
 - Database: Postgres, loaded from `seed/seed.sql` on first boot
+- Operations and deployment notes: see `OPERATIONS.md`
+
+## Verification
+
+Run the focused regression tests inside the built application image:
+
+```
+docker compose exec app python -m unittest discover -s /app/tests
+```
 
 Production server logs (Jan–Jun 2026) are provided in `logs/`.
 
