@@ -7,6 +7,8 @@ class PortalRegressionTests(unittest.TestCase):
     def setUp(self):
         portal.app.config.update(TESTING=True, SECRET_KEY="test-secret")
         self.client = portal.app.test_client()
+        with self.client.session_transaction() as session:
+            session["language"] = "en"
 
     def test_unicode_names_are_limited_by_characters(self):
         name = "অসমীয়া নাগৰিক"
@@ -45,7 +47,10 @@ class PortalRegressionTests(unittest.TestCase):
                 self.assertEqual(self.client.get(path).status_code, 200)
 
     def test_language_must_be_selected_before_home_page(self):
+        with self.client.session_transaction() as session:
+            session.pop("language", None)
         self.assertEqual(self.client.get("/").status_code, 302)
+        self.assertEqual(self.client.get("/apply").status_code, 302)
         response = self.client.post("/language", data={"language": "hi"})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/")

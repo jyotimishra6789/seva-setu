@@ -157,6 +157,18 @@ def language_context():
     return {"language": language, "language_info": LANGUAGES[language],
             "t": translated}
 
+
+@app.before_request
+def require_language_before_citizen_flow():
+    protected_endpoints = {
+        "apply", "verify_otp", "form_step", "upload_document",
+        "declaration", "status_login", "view_application",
+        "edit_application", "withdraw_application", "ack_pdf",
+        "reset_password",
+    }
+    if request.endpoint in protected_endpoints and "language" not in session:
+        return redirect(url_for("choose_language"))
+
 ADMIN_USERNAME = os.environ.get("SEWASETU_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("SEWASETU_ADMIN_PASSWORD",
                                  config.get("app", "admin_password"))
