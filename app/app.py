@@ -40,6 +40,7 @@ LANGUAGES = {
     "hi": {"name": "हिन्दी", "speech": "hi-IN"},
     "as": {"name": "অসমীয়া", "speech": "as-IN"},
     "bn": {"name": "বাংলা", "speech": "bn-IN"},
+    "ml": {"name": "മലയാളം", "speech": "ml-IN"},
 }
 
 TRANSLATIONS = {
@@ -116,6 +117,25 @@ TRANSLATIONS = {
            "free_assistance": "বিনামূল্যে সাহায্যের জন্য নিকটবর্তী ব্লক উন্নয়ন দপ্তরে যান অথবা এখানে যান:",
            "hours_suffix": "ঘণ্টা (৩১ অক্টোবর মধ্যরাতে)।", "service_footer": "সরকারি নাগরিক পরিষেবা",
            "about": "প্রকল্প সম্পর্কে", "rti": "তথ্যের অধিকার", "grievance": "অভিযোগ কেন্দ্র", "contact": "যোগাযোগ",
+    "ml": {"title": "സേവാ സേതു - വയോജന പെൻഷൻ പോർട്ടൽ",
+           "department": "സാമൂഹ്യക്ഷേമ വകുപ്പ് · പൂർവാഞ്ചൽ സർക്കാർ",
+           "help": "സഹായം വേണമോ? ഈ പെൻഷൻ സേവനം സൗജന്യമാണ്. ഏജന്റിന് പണം നൽകരുത്, OTP പങ്കിടരുത്.",
+           "choose_language": "ഭാഷ തിരഞ്ഞെടുക്കുക",
+           "language_help": "ഭാഷ പിന്നീട് മാറ്റാം. അപേക്ഷിക്കാൻ ആരെയും പണം നൽകേണ്ടതില്ല.",
+           "continue": "തുടരുക", "change_language": "ഭാഷ മാറ്റുക",
+           "read_aloud": "ഈ പേജ് വായിച്ചു കേൾപ്പിക്കുക", "home": "ഹോം",
+           "welcome": "സ്വാഗതം", "apply": "പെൻഷന് അപേക്ഷിക്കുക",
+           "scheme": "60 വയസോ അതിൽ കൂടുതലോ പ്രായമുള്ള അർഹരായ മുതിർന്ന പൗരന്മാർക്കുള്ള പ്രതിമാസ പെൻഷൻ പദ്ധതിയാണിത്.",
+           "status": "അപേക്ഷയുടെ സ്ഥിതി പരിശോധിക്കുക", "free_help": "അപേക്ഷിക്കാൻ ആരെയും പണം നൽകേണ്ടതില്ല.",
+           "free_help_detail": "സൗജന്യ സഹായത്തിനായി അടുത്തുള്ള ബ്ലോക്ക് ഡെവലപ്മെന്റ് ഓഫീസിൽ പോകുക.",
+           "how_to_apply": "എങ്ങനെ അപേക്ഷിക്കാം", "apply_help": "സൗജന്യ സഹായത്തിനായി അടുത്തുള്ള സർക്കാർ ഓഫീസിൽ പോകുക.",
+           "mobile_verification": "മൊബൈൽ പരിശോധന", "send_otp": "OTP അയയ്ക്കുക",
+           "window": "അപേക്ഷാ സമയപരിധി ഏകദേശം", "closed": "ഈ പദ്ധതിയുടെ അപേക്ഷാ സമയപരിധി കഴിഞ്ഞു.",
+           "steps": ["മൊബൈൽ നമ്പറും ലഭിച്ച ഒറ്റത്തവണ കോഡും നൽകുക.", "പ്രായ രേഖയിലുള്ളതുപോലെ പേര് നൽകുക.", "വിലാസവും ബാങ്ക് വിവരങ്ങളും നൽകുക.", "പ്രായ രേഖ അപ്‌ലോഡ് ചെയ്യുക.", "അപേക്ഷ സമർപ്പിച്ച് അംഗീകാര നമ്പർ സൂക്ഷിക്കുക."],
+           "safety": "OTP അല്ലെങ്കിൽ ബാങ്ക് PIN പങ്കിടരുത്. അപേക്ഷയ്ക്ക് സർക്കാർ ഫീസ് ഈടാക്കുന്നില്ല.",
+           "free_assistance": "സൗജന്യ സഹായത്തിനായി അടുത്തുള്ള സർക്കാർ ഓഫീസിൽ പോകുക അല്ലെങ്കിൽ",
+           "about": "പദ്ധതിയെക്കുറിച്ച്", "rti": "വിവരാവകാശം", "grievance": "പരാതി സെൽ", "contact": "ബന്ധപ്പെടുക",
+           "hours_suffix": "മണിക്കൂർ.", "service_footer": "സർക്കാർ പൗരസേവനം"},
            "status": "আবেদনের অবস্থা দেখুন", "free_help": "আবেদন করতে কাউকে টাকা দেওয়ার দরকার নেই।",
            "how_to_apply": "আবেদন করার পদ্ধতি", "apply_help": "বিনামূল্যে সাহায্যের জন্য নিকটবর্তী ব্লক উন্নয়ন দপ্তরে যান।",
            "mobile_verification": "মোবাইল যাচাই", "send_otp": "OTP পাঠান"},
@@ -125,8 +145,10 @@ TRANSLATIONS = {
 @app.context_processor
 def language_context():
     language = session.get("language", "en")
+    translated = dict(TRANSLATIONS["en"])
+    translated.update(TRANSLATIONS.get(language, {}))
     return {"language": language, "language_info": LANGUAGES[language],
-            "t": TRANSLATIONS[language]}
+            "t": translated}
 
 ADMIN_USERNAME = os.environ.get("SEWASETU_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("SEWASETU_ADMIN_PASSWORD",

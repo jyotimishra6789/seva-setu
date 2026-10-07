@@ -122,12 +122,31 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
   if (languageButtons.length && navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function (position) {
       var latitude = position.coords.latitude;
-      var suggestion = latitude >= 24 && latitude <= 28 ? "hi" : null;
-      if (suggestion) {
-        var suggestedButton = document.querySelector("[data-language='" + suggestion + "']");
-        if (suggestedButton) suggestedButton.setAttribute("aria-label", "Suggested language: " + suggestedButton.innerText);
-        document.getElementById("location-help").innerText =
-          "Based on your approximate location, Hindi may suit you. Please choose any language.";
+      var longitude = position.coords.longitude;
+      var suggestions = [];
+      if (latitude >= 8 && latitude <= 13 && longitude >= 74 && longitude <= 78) {
+        suggestions = ["ml", "en"];
+      } else if (latitude >= 8 && latitude <= 13 && longitude >= 77 && longitude <= 80) {
+        suggestions = ["en"];
+      } else if (latitude >= 15 && latitude <= 20 && longitude >= 73 && longitude <= 80) {
+        suggestions = ["hi", "en"];
+      } else if (latitude >= 24 && latitude <= 28) {
+        suggestions = ["hi", "en"];
+      }
+      suggestions = suggestions.filter(function (code) {
+        return document.querySelector("[data-language='" + code + "']");
+      });
+      if (suggestions.length) {
+        var suggestionBox = document.getElementById("location-suggestions");
+        suggestionBox.hidden = false;
+        suggestionBox.innerText = "Suggested languages for your area: " +
+          suggestions.map(function (code) {
+            return document.querySelector("[data-language='" + code + "']").innerText;
+          }).join(" / ") + ". Please choose any language.";
+        suggestions.forEach(function (code) {
+          var suggestedButton = document.querySelector("[data-language='" + code + "']");
+          suggestedButton.setAttribute("aria-label", "Suggested language: " + suggestedButton.innerText);
+        });
       }
     }, function () {});
   }
