@@ -1,31 +1,39 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="steps"><b>Step 2 of 6:</b> Personal Details</div>
-<h2>Personal Details</h2>
+<div class="steps"><b>{{ t.step2_title }}</b></div>
+<h2>{{ t.personal_details }}</h2>
 <form method="post">
-  <label>Full Name of Applicant (as per age proof document)</label>
-  <input type="text" name="applicant_name" value="{{ data.get('applicant_name','') }}">
-  <label>Date of Birth (DD/MM/YYYY)</label>
-  <input type="text" name="dob" placeholder="DD/MM/YYYY" value="{{ data.get('dob','') }}">
-  <label>Gender</label>
-  <select name="gender">
-    <option value="">--Select--</option>
-    <option {% if data.get('gender')=='Male' %}selected{% endif %}>Male</option>
-    <option {% if data.get('gender')=='Female' %}selected{% endif %}>Female</option>
-    <option {% if data.get('gender')=='Other' %}selected{% endif %}>Other</option>
+  <label>{{ t.applicant_name_label }} *</label>
+  <input type="text" name="applicant_name" value="{{ data.get('applicant_name','') }}" required>
+  
+  <label>{{ t.dob_label }} *</label>
+  <input type="text" name="dob" placeholder="{{ t.dob_placeholder }}" value="{{ data.get('dob','') }}" required>
+  
+  <label>{{ t.gender_label }} *</label>
+  <select name="gender" required>
+    <option value="">{{ t.gender_select }}</option>
+    <option value="Male" {% if data.get('gender')=='Male' %}selected{% endif %}>{{ t.gender_male }}</option>
+    <option value="Female" {% if data.get('gender')=='Female' %}selected{% endif %}>{{ t.gender_female }}</option>
+    <option value="Other" {% if data.get('gender')=='Other' %}selected{% endif %}>{{ t.gender_other }}</option>
   </select>
-  <label>Marital Status</label>
-  <select name="marital_status">
-    <option value="">--Select--</option>
-    <option {% if data.get('marital_status')=='Married' %}selected{% endif %}>Married</option>
-    <option {% if data.get('marital_status')=='Unmarried' %}selected{% endif %}>Unmarried</option>
-    <option {% if data.get('marital_status')=='Widowed' %}selected{% endif %}>Widowed</option>
+  
+  <label>{{ t.marital_status_label }} *</label>
+  <select name="marital_status" id="marital_status" required>
+    <option value="">{{ t.marital_select }}</option>
+    <option value="Married" {% if data.get('marital_status')=='Married' %}selected{% endif %}>{{ t.marital_married }}</option>
+    <option value="Unmarried" {% if data.get('marital_status')=='Unmarried' %}selected{% endif %}>{{ t.marital_unmarried }}</option>
+    <option value="Widowed" {% if data.get('marital_status')=='Widowed' %}selected{% endif %}>{{ t.marital_widowed }}</option>
   </select>
-  <label>Husband's Name</label>
-  <input type="text" name="husband_name" value="{{ data.get('husband_name','') }}">
-  <label>Husband's Current Employer</label>
-  <input type="text" name="husband_employer" value="{{ data.get('husband_employer','') }}">
-  <p class="note">Fields marked above are mandatory as applicable.</p>
-  <p><button class="btn" type="submit">Save &amp; Continue</button></p>
+  
+  <div id="husband_fields">
+    <label>{{ t.husband_name_label }}</label>
+    <input type="text" name="husband_name" value="{{ data.get('husband_name','') }}">
+    <label>{{ t.husband_employer_label }}</label>
+    <input type="text" name="husband_employer" value="{{ data.get('husband_employer','') }}">
+    <p class="note">{{ t.husband_help }}</p>
+  </div>
+  
+  <p class="note">{{ t.mandatory_note }}</p>
+  <p><button class="btn" type="submit">{{ t.save_continue }}</button></p>
 </form>
 {% endblock %}

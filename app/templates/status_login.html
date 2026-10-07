@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Application Status Portal</h2>
+<h2>{{ t.status_portal_title }}</h2>
 <form method="post">
-  <label>Mobile Number</label>
-  <input type="text" name="mobile" maxlength="10">
-  <label>Password</label>
-  <input type="password" name="password">
-  <p><button class="btn" type="submit">Login</button></p>
+  <label>{{ t.mobile_label }} *</label>
+  <input type="text" name="mobile" maxlength="10" inputmode="numeric" placeholder="{{ t.mobile_placeholder }}" required>
+  <label>{{ t.password_label }} *</label>
+  <input type="password" name="password" required>
+  <p><button class="btn" type="submit">{{ t.login_btn }}</button></p>
 </form>
-<p class="note"><a href="/status/reset">Forgot password?</a></p>
+<p class="note"><a href="/status/reset">{{ t.forgot_password }}</a></p>
 {% endblock %}

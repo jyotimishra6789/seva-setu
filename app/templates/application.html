@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Application Status</h2>
-<table class="tbl" style="max-width:640px">
-  <tr><th>Application No</th><td>{{ a[0] }}</td></tr>
-  <tr><th>Applicant Name</th><td>{{ a[1] }}</td></tr>
-  <tr><th>Mobile</th><td>{{ a[2] }}</td></tr>
-  <tr><th>Date of Birth</th><td>{{ a[3] }}</td></tr>
-  <tr><th>Village</th><td>{{ a[4] }}</td></tr>
-  <tr><th>Block</th><td>{{ a[5] }}</td></tr>
-  <tr><th>Bank Account</th><td>{{ a[6] }}</td></tr>
-  <tr><th>IFSC</th><td>{{ a[7] }}</td></tr>
-  <tr><th>Status</th><td><b>{{ a[8] }}</b></td></tr>
-  <tr><th>Submitted</th><td>{{ a[9] }}</td></tr>
-  <tr><th>Decided</th><td>{{ a[10] or '-' }}</td></tr>
+<h2>{{ t.app_status_title }}</h2>
+<table class="tbl" style="max-width:680px">
+  <tr><th>{{ t.app_no_label }}</th><td><b>{{ a[0] }}</b></td></tr>
+  <tr><th>{{ t.applicant_name_label }}</th><td>{{ a[1] }}</td></tr>
+  <tr><th>{{ t.mobile_label }}</th><td>{{ a[2] }}</td></tr>
+  <tr><th>{{ t.dob_label }}</th><td>{{ a[3] }}</td></tr>
+  <tr><th>{{ t.village_label }}</th><td>{{ a[4] }}</td></tr>
+  <tr><th>{{ t.block_label }}</th><td>{{ a[5] }}</td></tr>
+  <tr><th>{{ t.bank_account_label }}</th><td><code>{{ mask_account(a[6]) }}</code></td></tr>
+  <tr><th>{{ t.ifsc_label }}</th><td>{{ a[7] }}</td></tr>
+  <tr><th>{{ t.status_label }}</th><td><b>{{ a[8] }}</b></td></tr>
+  <tr><th>{{ t.submitted_at_label }}</th><td>{{ a[9] }}</td></tr>
+  <tr><th>{{ t.decided_at_label }}</th><td>{{ a[10] or '-' }}</td></tr>
 </table>
-<p><a href="/ack/{{ app_id }}.pdf">Download Acknowledgment (PDF)</a></p>
+<p style="margin:20px 0"><a href="/ack/{{ app_id }}.pdf"><button class="btn">{{ t.download_ack }}</button></a></p>
 {% if a[8] == 'PENDING' %}
-<p><a href="/application/{{ app_id }}/edit">Correct application details</a></p>
-<form method="post" action="/application/{{ app_id }}/withdraw">
-  <button class="btn" style="background:#a33" type="submit">Withdraw pending application</button>
+<p><a href="/application/{{ app_id }}/edit"><button class="btn" style="background:#0b5e3d">{{ t.correct_details_btn }}</button></a></p>
+<form method="post" action="/application/{{ app_id }}/withdraw" onsubmit="return confirm('Are you sure you want to withdraw this application?');">
+  <button class="btn" style="background:#a33" type="submit">{{ t.withdraw_btn }}</button>
 </form>
 {% endif %}
 {% endblock %}

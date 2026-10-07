@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 logs/extracted/
+*.mp3
+seed/
+logs/*.tar.gz

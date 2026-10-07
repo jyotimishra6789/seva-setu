@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="steps"><b>Step 3 of 6:</b> Address Details</div>
-<h2>Address Details</h2>
+<div class="steps"><b>{{ t.step3_title }}</b></div>
+<h2>{{ t.address_details }}</h2>
 <form method="post">
-  <label>Village / Town</label>
-  <input type="text" name="village" value="{{ data.get('village','') }}">
-  <label>Block</label>
-  <select name="block">
-    <option value="">--Select--</option>
+  <label>{{ t.village_label }} *</label>
+  <input type="text" name="village" value="{{ data.get('village','') }}" required>
+  <label>{{ t.block_label }} *</label>
+  <select name="block" required>
+    <option value="">{{ t.block_select }}</option>
     {% for b in blocks %}
     <option {% if data.get('block')==b %}selected{% endif %}>{{ b }}</option>
     {% endfor %}
   </select>
-  <p><button class="btn" type="submit">Save &amp; Continue</button></p>
+  <p><button class="btn" type="submit">{{ t.save_continue }}</button></p>
 </form>
 {% endblock %}

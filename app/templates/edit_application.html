@@ -1,33 +1,40 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Correct Pending Application</h2>
-<p class="note">Corrections are allowed while the application is pending. This does not
-reset the statutory processing clock.</p>
+<h2>{{ t.edit_heading }}</h2>
+<p class="plain-help">{{ t.edit_note }}</p>
 <form method="post">
-  <label>Applicant Name</label>
+  <label>{{ t.applicant_name_label }} *</label>
   <input type="text" name="applicant_name" value="{{ a[1] }}" required>
-  <label>Date of Birth (DD/MM/YYYY)</label>
-  <input type="text" name="dob" value="{{ a[2].strftime('%d/%m/%Y') }}" required>
-  <label>Gender</label>
-  <input type="text" name="gender" value="{{ a[3] }}">
-  <label>Marital Status</label>
-  <input type="text" name="marital_status" value="{{ a[4] }}">
-  <label>Husband's Name</label>
+  <label>{{ t.dob_label }} *</label>
+  <input type="text" name="dob" value="{{ a[2].strftime('%d/%m/%Y') if a[2] else '' }}" required>
+  <label>{{ t.gender_label }}</label>
+  <select name="gender">
+    <option value="Male" {% if a[3]=='Male' %}selected{% endif %}>{{ t.gender_male }}</option>
+    <option value="Female" {% if a[3]=='Female' %}selected{% endif %}>{{ t.gender_female }}</option>
+    <option value="Other" {% if a[3]=='Other' %}selected{% endif %}>{{ t.gender_other }}</option>
+  </select>
+  <label>{{ t.marital_status_label }}</label>
+  <select name="marital_status">
+    <option value="Married" {% if a[4]=='Married' %}selected{% endif %}>{{ t.marital_married }}</option>
+    <option value="Unmarried" {% if a[4]=='Unmarried' %}selected{% endif %}>{{ t.marital_unmarried }}</option>
+    <option value="Widowed" {% if a[4]=='Widowed' %}selected{% endif %}>{{ t.marital_widowed }}</option>
+  </select>
+  <label>{{ t.husband_name_label }}</label>
   <input type="text" name="husband_name" value="{{ a[5] or '' }}">
-  <label>Husband's Current Employer</label>
+  <label>{{ t.husband_employer_label }}</label>
   <input type="text" name="husband_employer" value="{{ a[6] or '' }}">
-  <label>Village / Town</label>
+  <label>{{ t.village_label }} *</label>
   <input type="text" name="village" value="{{ a[7] }}" required>
-  <label>Block</label>
+  <label>{{ t.block_label }} *</label>
   <select name="block" required>
     {% for block in blocks %}
     <option value="{{ block }}" {% if a[8] == block %}selected{% endif %}>{{ block }}</option>
     {% endfor %}
   </select>
-  <label>Bank Account Number</label>
+  <label>{{ t.bank_account_label }} *</label>
   <input type="text" name="bank_account" value="{{ a[9] }}" required>
-  <label>IFSC Code</label>
+  <label>{{ t.ifsc_label }} *</label>
   <input type="text" name="ifsc" value="{{ a[10] }}" required>
-  <p><button class="btn" type="submit">Save Correction</button></p>
+  <p><button class="btn" type="submit">{{ t.save_correction }}</button></p>
 </form>
 {% endblock %}

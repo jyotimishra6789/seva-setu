@@ -2,6 +2,7 @@
 <html lang="{{ language }}">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ t.title }}</title>
 <style>
 body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f0f2f5;color:#222;font-size:18px;line-height:1.5}
@@ -139,8 +140,8 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
         suggestions = ["hi", "en"];
       } else if (latitude >= 18 && latitude <= 23 && longitude >= 81 && longitude <= 88) {
         suggestions = ["or", "en"];
-      } else if (latitude >= 21 && latitude <= 27 && longitude >= 88 && longitude <= 97) {
-        suggestions = ["bn", "as", "en"];
+      } else if (latitude >= 20 && latitude <= 29 && longitude >= 88 && longitude <= 98) {
+        suggestions = ["as", "hi", "bn", "en"];
       }
       suggestions = suggestions.filter(function (code) {
         return document.querySelector("[data-language='" + code + "']");
@@ -151,36 +152,42 @@ font-size:16px;margin:8px 0 0 8px;cursor:pointer}
         });
         var suggestionBox = document.getElementById("location-suggestions");
         suggestionBox.hidden = false;
-        suggestionBox.innerText = "Languages most spoken in your area: " +
+        suggestionBox.innerText = "📍 Languages recommended for your location: " +
           suggestions.map(function (code) {
             return document.querySelector("[data-language='" + code + "']").innerText;
-          }).join(" / ") + ". Please choose any language.";
+          }).join(" · ") + ". You may choose any language below.";
         var showAll = document.getElementById("show-all-languages");
-        showAll.hidden = false;
-        showAll.addEventListener("click", function () {
-          languageButtons.forEach(function (button) { button.hidden = false; });
-          showAll.hidden = true;
-        });
+        if (showAll) {
+          showAll.hidden = false;
+          showAll.addEventListener("click", function () {
+            languageButtons.forEach(function (button) { button.hidden = false; });
+            showAll.hidden = true;
+          });
+        }
         suggestions.forEach(function (code) {
           var suggestedButton = document.querySelector("[data-language='" + code + "']");
-          suggestedButton.setAttribute("aria-label", "Suggested language: " + suggestedButton.innerText);
+          if (suggestedButton) {
+            suggestedButton.setAttribute("aria-label", "Suggested language: " + suggestedButton.innerText);
+          }
         });
       }
   }
   function requestLocation() {
     if (!navigator.geolocation) {
       document.getElementById("location-help").innerText =
-        "Location suggestions are not available in this browser. Please choose a language.";
+        "Location suggestions are not available. Please choose your preferred language below.";
       return;
     }
     navigator.geolocation.getCurrentPosition(showLocationSuggestions, function () {
-      document.getElementById("location-help").innerText =
-        "Location was not shared. Please choose a language.";
-    });
+      // Default to Assam/Purvanchal primary languages on fallback
+      showLocationSuggestions({coords: {latitude: 26.1, longitude: 91.7}});
+    }, {timeout: 4000});
   }
   var detectButton = document.getElementById("detect-location");
   if (detectButton) {
     detectButton.addEventListener("click", requestLocation);
+    // Auto-detect on page load for convenience of senior citizens
+    setTimeout(requestLocation, 100);
   }
 })();
 </script>

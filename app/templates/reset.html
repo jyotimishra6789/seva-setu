@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Reset Password</h2>
+<h2>{{ t.reset_title }}</h2>
 <form method="post">
-  <label>Registered Mobile Number</label>
-  <input type="text" name="mobile">
-  <p><button class="btn" type="submit">Reset Password</button></p>
+  <label>{{ t.registered_mobile_label }} *</label>
+  <input type="text" name="mobile" maxlength="10" inputmode="numeric" required>
+  <p><button class="btn" type="submit">{{ t.reset_password_btn }}</button></p>
 </form>
 {% endblock %}
