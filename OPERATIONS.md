@@ -54,6 +54,10 @@ budget; keep the total across web workers and scheduled jobs below PostgreSQL's
 
 ## Citizen support
 
+The `/__gateway/` proxy is currently exposed for assessor and integration-test
+access to the internal SMS gateway. Remove this route and do not expose the
+gateway proxy in production deployments.
+
 Citizens can log in to the status portal, correct a pending application, or
 withdraw it before staff decision. A correction does not reset `submitted_at`
 and therefore does not reset the statutory processing clock.

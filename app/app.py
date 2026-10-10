@@ -11,7 +11,6 @@ Refactored and hardened for Build for Bharat Fellowship 2027.
 import os
 import io
 import csv
-import time
 import hashlib
 import hmac
 import configparser
@@ -727,7 +726,8 @@ def parse_date_of_birth(value):
 def validate_application_fields(data):
     errors = {}
     cleaned = dict(data)
-    cleaned["applicant_name"] = sanitize(data.get("applicant_name", ""))
+    raw_name = str(data.get("applicant_name", "")).strip()
+    cleaned["applicant_name"] = sanitize(raw_name)
     cleaned["village"] = sanitize(data.get("village", ""))
     cleaned["block"] = str(data.get("block", "")).strip()
     cleaned["bank_account"] = "".join(str(data.get("bank_account", "")).split())
@@ -736,7 +736,7 @@ def validate_application_fields(data):
 
     if not cleaned["applicant_name"]:
         errors["applicant_name"] = "Please enter the applicant's full name."
-    elif len(cleaned["applicant_name"]) > 100:
+    elif len(raw_name) > 100:
         errors["applicant_name"] = "The applicant name must be 100 characters or fewer."
 
     dob = parse_date_of_birth(cleaned["dob"])
@@ -795,6 +795,19 @@ def init_db():
                     "ON applications (mobile, submitted_at DESC)")
         cur.execute("CREATE INDEX IF NOT EXISTS otps_mobile_created_idx "
                     "ON otps (mobile, created_at DESC)")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS job_runs (
+                   id BIGSERIAL PRIMARY KEY,
+                   job_name VARCHAR(100) NOT NULL,
+                   started_at TIMESTAMP NOT NULL,
+                   completed_at TIMESTAMP,
+                   success BOOLEAN NOT NULL DEFAULT FALSE,
+                   approved_count INTEGER NOT NULL DEFAULT 0,
+                   error_message TEXT
+               )"""
+        )
+        cur.execute("CREATE INDEX IF NOT EXISTS job_runs_name_started_idx "
+                    "ON job_runs (job_name, started_at DESC)")
         conn.commit()
         DB_SCHEMA_READY = True
     finally:
@@ -1253,25 +1266,31 @@ def generate_acknowledgment(cur, app_id):
 
     pdf = FPDF()
     pdf.add_page()
-    font_dir = "/usr/share/fonts/truetype/noto"
+    font_dir = os.path.join(BASE_DIR, "fonts")
     regular_font = os.path.join(font_dir, "NotoSans-Regular.ttf")
     bold_font = os.path.join(font_dir, "NotoSans-Bold.ttf")
     has_unicode_font = os.path.exists(regular_font) and os.path.exists(bold_font)
 
     if has_unicode_font:
-        pdf.add_font("NotoSans", "", regular_font)
-        pdf.add_font("NotoSans", "B", bold_font)
+        try:
+            pdf.add_font("NotoSans", "", regular_font)
+            pdf.add_font("NotoSans", "B", bold_font)
+            pdf.set_text_shaping(True)
+        except Exception as exc:
+            app.logger.warning("unicode PDF font setup failed: %s", exc)
+            has_unicode_font = False
+    if has_unicode_font:
         fallback_fonts = []
-        fallback_scripts = (
-            "Bengali", "Devanagari", "Arabic", "Gujarati", "Gurmukhi",
-            "Kannada", "Malayalam", "Oriya", "Tamil", "Telugu",
-        )
+        fallback_scripts = ("Bengali", "Devanagari")
         for script in fallback_scripts:
             path = os.path.join(font_dir, "NotoSans%s-Regular.ttf" % script)
             if os.path.exists(path):
-                family = "NotoFallback" + script
-                pdf.add_font(family, "", path)
-                fallback_fonts.append(family)
+                try:
+                    family = "NotoFallback" + script
+                    pdf.add_font(family, "", path)
+                    fallback_fonts.append(family)
+                except Exception as exc:
+                    app.logger.warning("PDF fallback font %s failed: %s", script, exc)
         if fallback_fonts:
             pdf.set_fallback_fonts(fallback_fonts, exact_match=False)
 
@@ -1290,14 +1309,18 @@ def generate_acknowledgment(cur, app_id):
     display_row = list(row)
     display_row[9] = effective_status(row[9], row[8])
     for label, val in zip(labels, display_row):
-        display_val = str(val) if val is not None else ""
+        if label in ("Submitted At", "Date of Birth") and val:
+            display_val = val.strftime("%d/%m/%Y %H:%M") if hasattr(val, "hour") else val.strftime("%d/%m/%Y")
+        else:
+            display_val = str(val) if val is not None else ""
         if label == "Bank Account":
             display_val = mask_account(display_val)
         try:
             pdf.cell(60, 8, label)
             pdf.cell(0, 8, display_val, ln=1)
         except Exception:
-            pdf.cell(0, 8, sanitize(display_val, 50), ln=1)
+            safe_value = sanitize(display_val, 50).encode("ascii", "replace").decode("ascii")
+            pdf.cell(0, 8, safe_value, ln=1)
 
     pdf.ln(8)
     pdf.set_font(font_family, "", 9)
@@ -1316,11 +1339,7 @@ def status_login():
         mobile = request.form.get("mobile", "").strip()
         password = request.form.get("password", "")
 
-        # Rate limiting: max 5 failed attempts per 15 mins
-        now = time.time()
-        attempts = [t for t in LOGIN_ATTEMPTS.get(mobile, []) if now - t < 900]
-        LOGIN_ATTEMPTS[mobile] = attempts
-        if len(attempts) >= 5:
+        if auth_attempt_blocked(mobile, "status_login"):
             flash("Too many failed login attempts. Please try again in 15 minutes.")
             return render_template("status_login.html")
 
@@ -1334,7 +1353,7 @@ def status_login():
             conn.close()
 
         if row and verify_password(row[0], password):
-            LOGIN_ATTEMPTS.pop(mobile, None)
+            clear_auth_failures(mobile, "status_login")
             session["logged_in"] = True
             session["admin"] = False
             session["portal_mobile"] = mobile
@@ -1367,7 +1386,7 @@ def status_login():
             flash("No application found for this mobile number.")
             return redirect(url_for("status_login"))
 
-        LOGIN_ATTEMPTS.setdefault(mobile, []).append(now)
+        record_auth_failure(mobile, "status_login")
         flash("Invalid mobile number or password.")
     return render_template("status_login.html")
 
@@ -1436,7 +1455,8 @@ def edit_application(app_id):
                         row[3], row[4], row[5], row[6], row[7],
                         cleaned["village"], cleaned["block"],
                         cleaned["bank_account"], cleaned["ifsc"])
-            return render_template("edit_application.html", a=edit_row, blocks=BLOCKS)
+            return render_template("edit_application.html", a=edit_row, blocks=BLOCKS,
+                                   raw_dob=cleaned["dob"])
         dob = cleaned["parsed_dob"]
         if dob is None:
             return render_template("edit_application.html", a=row, blocks=BLOCKS)
@@ -1538,13 +1558,20 @@ def reset_password():
 @app.route("/admin", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
-        if (request.form.get("username") == ADMIN_USERNAME and
-                request.form.get("password") == ADMIN_PASSWORD):
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if auth_attempt_blocked(username, "admin_login"):
+            flash("Too many failed login attempts. Please try again in 15 minutes.")
+            return render_template("admin_login.html")
+        if (hmac.compare_digest(username, ADMIN_USERNAME) and
+                hmac.compare_digest(password, ADMIN_PASSWORD)):
+            clear_auth_failures(username, "admin_login")
             session["logged_in"] = True
             session["admin"] = True
             session.pop("portal_mobile", None)
             session.pop("portal_application_id", None)
             return redirect(url_for("admin_dashboard"))
+        record_auth_failure(username, "admin_login")
         flash("Invalid credentials.")
     return render_template("admin_login.html")
 
@@ -1582,7 +1609,10 @@ def admin_list():
     if not session.get("admin"):
         return redirect(url_for("admin_login"))
     status = request.args.get("status", "PENDING")
-    page = int(request.args.get("page", 1))
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (TypeError, ValueError):
+        page = 1
     conn = get_db()
     cur = conn.cursor()
     try:

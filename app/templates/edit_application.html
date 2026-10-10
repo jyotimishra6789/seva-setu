@@ -6,7 +6,7 @@
   <label>{{ t.applicant_name_label }} *</label>
   <input type="text" name="applicant_name" value="{{ a[1] }}" required>
   <label>{{ t.dob_label }} *</label>
-  <input type="text" name="dob" value="{{ a[2].strftime('%d/%m/%Y') if a[2] else '' }}" required>
+  <input type="text" name="dob" value="{{ raw_dob if raw_dob is defined else (a[2].strftime('%d/%m/%Y') if a[2] else '') }}" required>
   <label>{{ t.gender_label }}</label>
   <select name="gender">
     <option value="Male" {% if a[3]=='Male' %}selected{% endif %}>{{ t.gender_male }}</option>

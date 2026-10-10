@@ -54,9 +54,18 @@ CREATE TABLE IF NOT EXISTS otps (
     code       VARCHAR(6),
     created_at TIMESTAMP
 );
+ALTER TABLE otps ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS otps_mobile_created_idx
     ON otps (mobile, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS auth_attempts (
+    identity        VARCHAR(100) PRIMARY KEY,
+    attempt_type    VARCHAR(30) NOT NULL,
+    failed_count    INTEGER NOT NULL DEFAULT 0,
+    first_failed_at TIMESTAMP NOT NULL,
+    blocked_until   TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS job_runs (
     id              BIGSERIAL PRIMARY KEY,
