@@ -68,6 +68,14 @@ class PortalRegressionTests(unittest.TestCase):
         self.assertIn("സേവാ സേതു".encode("utf-8"), home.data)
         self.assertEqual(home.headers["Cache-Control"], "no-store, max-age=0")
 
+    def test_language_selection_always_stays_on_home_page(self):
+        language_page = self.client.get("/language")
+        self.assertEqual(language_page.status_code, 302)
+        self.assertEqual(language_page.headers["Location"], "/?change=1")
+        home = self.client.get("/?change=1")
+        self.assertEqual(home.status_code, 200)
+        self.assertIn(b"language-modal", home.data)
+
     def test_password_hashes_are_not_deterministic(self):
         first = portal.hash_password("04071950")
         second = portal.hash_password("04071950")

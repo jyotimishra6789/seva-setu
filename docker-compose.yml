@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: sewasetu
       POSTGRES_USER: sewasetu
-      POSTGRES_PASSWORD: sewasetu123
+      POSTGRES_PASSWORD: ${SEWASETU_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./app/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
@@ -24,6 +24,10 @@ services:
         condition: service_healthy
       smsgw:
         condition: service_started
+    environment:
+      SEWASETU_SECRET_KEY: ${SEWASETU_SECRET_KEY}
+      SEWASETU_ADMIN_PASSWORD: ${SEWASETU_ADMIN_PASSWORD}
+      SEWASETU_DB_PASSWORD: ${SEWASETU_DB_PASSWORD}
     volumes:
       - uploads:/var/sewasetu/uploads
       - applogs:/var/log/sewasetu
@@ -34,6 +38,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      SEWASETU_DB_PASSWORD: ${SEWASETU_DB_PASSWORD}
     volumes:
       - applogs:/var/log/sewasetu
 

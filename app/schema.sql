@@ -30,6 +30,9 @@ ALTER TABLE applications ALTER COLUMN husband_employer TYPE TEXT;
 ALTER TABLE applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
 CREATE INDEX IF NOT EXISTS applications_mobile_status_idx
     ON applications (mobile, status);
+CREATE UNIQUE INDEX IF NOT EXISTS applications_active_mobile_uidx
+    ON applications (mobile)
+    WHERE status <> 'WITHDRAWN';
 CREATE INDEX IF NOT EXISTS applications_status_submitted_idx
     ON applications (status, submitted_at);
 

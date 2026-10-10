@@ -63,9 +63,10 @@ padding:26px;box-shadow:0 4px 18px rgba(0,0,0,.3)}
   {% for m in messages %}<div class="flash" role="alert">{{ m }}</div>{% endfor %}
 {% endwith %}
 {% block content %}{% endblock %}
+<div id="voice-status" class="note" role="status" aria-live="polite"></div>
 </div>
 <div class="footer">
-  <a href="/language">{{ t.change_language }}</a> |
+  <a href="/?change=1">{{ t.change_language }}</a> |
   <a href="/about">{{ t.about }}</a> |
   <a href="/rti">{{ t.rti }}</a> |
   <a href="/grievance">{{ t.grievance }}</a> |
@@ -77,12 +78,50 @@ padding:26px;box-shadow:0 4px 18px rgba(0,0,0,.3)}
 (function () {
   var speechLanguage = "{{ language_info.speech }}";
   var synth = window.speechSynthesis;
+  var speechStatus = document.getElementById("voice-status");
+  function setSpeechStatus(message) {
+    if (speechStatus) speechStatus.textContent = message;
+  }
+  function preferredVoice(language) {
+    var voices = synth ? synth.getVoices() : [];
+    var requestedLanguage = language || speechLanguage;
+    var exact = voices.filter(function (voice) {
+      return voice.lang.toLowerCase() === requestedLanguage.toLowerCase();
+    });
+    if (exact.length) return exact[0];
+    var languageCode = requestedLanguage.split("-")[0].toLowerCase();
+    var matching = voices.filter(function (voice) {
+      return voice.lang.toLowerCase().split("-")[0] === languageCode;
+    });
+    return matching.length ? matching[0] : null;
+  }
   function speak(text, lang) {
-    if (!synth) return;
+    if (!synth || !window.SpeechSynthesisUtterance) {
+      setSpeechStatus("Audio reading is not supported in this browser.");
+      return;
+    }
     synth.cancel();
     var utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang || speechLanguage;
+    var requestedLanguage = lang || speechLanguage;
+    utterance.lang = requestedLanguage;
+    var voice = preferredVoice(requestedLanguage);
+    if (voice) utterance.voice = voice;
+    utterance.onstart = function () {
+      setSpeechStatus("Reading aloud…");
+    };
+    utterance.onend = function () {
+      setSpeechStatus("");
+    };
+    utterance.onerror = function () {
+      setSpeechStatus("This language voice is not available. Please install a " +
+        requestedLanguage + " voice in your browser or operating system.");
+    };
     synth.speak(utterance);
+  }
+  if (synth && synth.addEventListener) {
+    synth.addEventListener("voiceschanged", function () {
+      preferredVoice(speechLanguage);
+    });
   }
   document.querySelectorAll("[data-speak='page']").forEach(function (button) {
     button.addEventListener("click", function () {

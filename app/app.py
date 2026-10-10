@@ -16,6 +16,7 @@ import random
 import hashlib
 import hmac
 import configparser
+from concurrent.futures import ThreadPoolExecutor
 import secrets
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
@@ -34,7 +35,7 @@ config = configparser.ConfigParser()
 config.read(os.path.join(BASE_DIR, "config", "app.ini"))
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SEWASETU_SECRET_KEY", config.get("app", "secret_key"))
+app.secret_key = os.environ["SEWASETU_SECRET_KEY"]
 app.config["PERMANENT_SESSION_LIFETIME"] = 1800  # 30 mins session
 
 LANGUAGES = {
@@ -71,7 +72,7 @@ TRANSLATIONS = {
             "Enter your mobile number and the one-time code sent to you.",
             "Enter your name exactly as it appears on your age proof document.",
             "Enter your address and bank account details. You can review all details before submit.",
-            "Upload an age proof document (Aadhaar, Voter ID, Ration card, or Birth certificate, max 10 MB).",
+            "Upload an age proof document (Aadhaar, Voter ID, Ration card, or Birth certificate, max 5 MB).",
             "Review your details on the final page, submit, and save or print the acknowledgment number."
         ],
         "safety": "Never share your OTP or bank PIN. The department will never charge a fee to submit this application.",
@@ -95,9 +96,9 @@ TRANSLATIONS = {
         "gender_male": "Male", "gender_female": "Female", "gender_other": "Other",
         "marital_status_label": "Marital Status", "marital_select": "--Select Status--",
         "marital_married": "Married", "marital_unmarried": "Unmarried", "marital_widowed": "Widowed",
-        "husband_name_label": "Husband's Name (if married female)",
+        "husband_name_label": "Spouse's Name (optional)",
         "husband_employer_label": "Husband's Employer (optional)",
-        "husband_help": "Note: Spouse details are optional and only apply to married applicants.",
+        "husband_help": "Note: Spouse details are optional for all applicants.",
         "mandatory_note": "Fields marked with * are mandatory.",
         "save_continue": "Save & Continue",
         "step3_title": "Step 3 of 6: Address Details",
@@ -110,7 +111,7 @@ TRANSLATIONS = {
         "dbt_note": "Pension will be credited by Direct Benefit Transfer (DBT) to this account. Ensure the account is in the name of the applicant.",
         "step5_title": "Step 5 of 6: Document Upload",
         "upload_heading": "Upload Age Proof Document",
-        "upload_help": "Accepted documents: Aadhaar card, Voter ID, Ration card, Birth certificate, or School certificate. Accepted formats: JPG, PNG, or PDF (up to 10 MB).",
+        "upload_help": "Accepted documents: Aadhaar card, Voter ID, Ration card, Birth certificate, or School certificate. Accepted formats: JPG, PNG, or PDF (up to 5 MB).",
         "select_doc": "Select Document", "upload_button": "Upload & Continue",
         "step6_title": "Step 6 of 6: Review & Declaration",
         "review_heading": "Review Application Details",
@@ -556,8 +557,7 @@ def prevent_stale_language_pages(response):
 
 
 ADMIN_USERNAME = os.environ.get("SEWASETU_ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("SEWASETU_ADMIN_PASSWORD",
-                                 config.get("app", "admin_password"))
+ADMIN_PASSWORD = os.environ["SEWASETU_ADMIN_PASSWORD"]
 
 SMS_GATEWAY_URL = config.get("app", "sms_gateway_url")
 OTP_VALIDITY_SECONDS = 600  # 10 minutes for elderly citizens
@@ -601,7 +601,7 @@ def get_db():
             port=config.get("database", "port"),
             dbname=config.get("database", "name"),
             user=config.get("database", "user"),
-            password=config.get("database", "password"),
+            password=os.environ["SEWASETU_DB_PASSWORD"],
         )
     return PooledConnection(DB_POOL, DB_POOL.getconn())
 
@@ -663,6 +663,13 @@ def send_sms(mobile, text):
         app.logger.error("sms gateway error: %s" % e)
 
 
+SMS_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="sms")
+
+
+def send_sms_async(mobile, text):
+    SMS_EXECUTOR.submit(send_sms, mobile, text)
+
+
 def deadline_remaining():
     delta = SCHEME_DEADLINE - datetime.now(IST)
     if delta.total_seconds() <= 0:
@@ -693,7 +700,9 @@ def index():
         "index.html",
         hours_left=deadline_remaining(),
         languages=LANGUAGES,
-        show_language_modal="language" not in session,
+        show_language_modal=(
+            "language" not in session or request.args.get("change") == "1"
+        ),
     )
 
 
@@ -705,7 +714,7 @@ def choose_language():
             abort(400)
         session["language"] = language
         return redirect(url_for("index"))
-    return render_template("language.html", languages=LANGUAGES)
+    return redirect(url_for("index", change="1"))
 
 
 @app.route("/about")
@@ -793,7 +802,7 @@ def apply():
             cur.close()
             conn.close()
 
-        send_sms(mobile, "Your Sewa Setu OTP is %s. Valid for 10 minutes." % code)
+        send_sms_async(mobile, "Your Sewa Setu OTP is %s. Valid for 10 minutes." % code)
         session.permanent = True
         session["apply_mobile"] = mobile
         return redirect(url_for("verify"))
@@ -870,8 +879,8 @@ def upload():
         if extension not in (".pdf", ".jpg", ".jpeg", ".png"):
             flash("Please upload a PDF, JPG, or PNG document.")
             return render_template("upload.html")
-        if len(content) > 10 * 1024 * 1024:
-            flash("The document must be 10 MB or smaller.")
+        if len(content) > 5 * 1024 * 1024:
+            flash("The document must be 5 MB or smaller.")
             return render_template("upload.html")
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         filename = "%s_%s%s" % (session["verified_mobile"], secrets.token_hex(8), extension)
@@ -924,7 +933,7 @@ def handle_submission():
 
     # Lenient date parsing: prioritize DD/MM/YYYY for India
     dob = None
-    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d.%m.%Y", "%m/%d/%Y"):
+    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d.%m.%Y"):
         try:
             dob = datetime.strptime(dob_raw, fmt).date()
             break
@@ -947,24 +956,23 @@ def handle_submission():
     conn = get_db()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT count(*) FROM applications WHERE mobile = %s "
-                    "AND status <> 'WITHDRAWN'", (mobile,))
-        if cur.fetchone()[0] > 0:
+        app_no = new_application_no()
+        try:
+            cur.execute(
+                """INSERT INTO applications
+                   (application_no, applicant_name, mobile, dob, gender, marital_status,
+                    husband_name, husband_employer, village, block, bank_account, ifsc,
+                    doc_path, status, submitted_at)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PENDING',%s)
+                   RETURNING id""",
+                (app_no, name, mobile, dob, gender, marital, husband_name,
+                 husband_employer, village, block, bank_account, ifsc, doc_path,
+                 now_ist()))
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
             flash("An active application already exists for this mobile number. "
                   "You may log in to check its status or correct details.")
             return redirect(url_for("status_login"))
-
-        app_no = new_application_no()
-        cur.execute(
-            """INSERT INTO applications
-               (application_no, applicant_name, mobile, dob, gender, marital_status,
-                husband_name, husband_employer, village, block, bank_account, ifsc,
-                doc_path, status, submitted_at)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PENDING',%s)
-               RETURNING id""",
-            (app_no, name, mobile, dob, gender, marital, husband_name,
-             husband_employer, village, block, bank_account, ifsc, doc_path,
-             now_ist()))
         new_id = cur.fetchone()[0]
 
         # Status portal account: default password is DOB as DDMMYYYY
@@ -991,8 +999,8 @@ def handle_submission():
     session.pop("doc_path", None)
     session.pop("verified_mobile", None)
     session["submitted_application_id"] = new_id
-    send_sms(mobile, "Sewa Setu: application %s received. Track at the status portal "
-                     "with mobile no. and password (DOB as DDMMYYYY)." % app_no)
+    send_sms_async(mobile, "Sewa Setu: application %s received. Track at the status portal "
+                    "with mobile no. and password (DOB as DDMMYYYY)." % app_no)
     return render_template("confirmation.html", app_no=app_no, app_id=new_id)
 
 
@@ -1261,8 +1269,8 @@ def reset_password():
                     cur.execute("UPDATE portal_users SET password_hash = %s WHERE mobile = %s",
                                 (hash_password(newpass), row[0]))
                     conn.commit()
-                    send_sms(row[0], "Sewa Setu: your password has been reset to your "
-                                     "date of birth (DDMMYYYY).")
+                    send_sms_async(row[0], "Sewa Setu: your password has been reset to your "
+                                           "date of birth (DDMMYYYY).")
         finally:
             cur.close()
             conn.close()
