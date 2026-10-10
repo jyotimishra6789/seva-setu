@@ -57,3 +57,16 @@ CREATE TABLE IF NOT EXISTS otps (
 
 CREATE INDEX IF NOT EXISTS otps_mobile_created_idx
     ON otps (mobile, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS job_runs (
+    id              BIGSERIAL PRIMARY KEY,
+    job_name        VARCHAR(100) NOT NULL,
+    started_at      TIMESTAMP NOT NULL,
+    completed_at    TIMESTAMP,
+    success         BOOLEAN NOT NULL DEFAULT FALSE,
+    approved_count  INTEGER NOT NULL DEFAULT 0,
+    error_message   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS job_runs_name_started_idx
+    ON job_runs (job_name, started_at DESC);

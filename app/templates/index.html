@@ -5,13 +5,19 @@
   <div class="language-modal-card">
     <h2 id="language-modal-title">{{ t.choose_language }}</h2>
     <p class="plain-help">{{ t.language_help }}</p>
+    <button id="detect-location" class="btn" type="button">{{ t.detect_language }}</button>
+    <p id="location-help" class="note" role="status"></p>
+    <p id="location-suggestions" class="plain-help" hidden></p>
     <form method="post" action="/language" class="language-options" aria-label="Language choices">
       {% for code, info in languages.items() %}
-      <button class="language-button" type="submit" name="language" value="{{ code }}">
+      <button class="language-button" data-language="{{ code }}" type="submit" name="language" value="{{ code }}">
         {{ info.name }}
       </button>
       {% endfor %}
     </form>
+    <button id="show-all-languages" class="btn secondary-btn" type="button" hidden>
+      {{ t.show_all_languages }}
+    </button>
   </div>
 </div>
 {% endif %}

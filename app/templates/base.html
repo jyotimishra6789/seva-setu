@@ -105,7 +105,20 @@ padding:26px;box-shadow:0 4px 18px rgba(0,0,0,.3)}
     var requestedLanguage = lang || speechLanguage;
     utterance.lang = requestedLanguage;
     var voice = preferredVoice(requestedLanguage);
-    if (voice) utterance.voice = voice;
+    if (!voice) {
+      var fallback = preferredVoice("hi-IN") || preferredVoice("en-IN");
+      if (fallback) {
+        utterance.voice = fallback;
+        utterance.lang = fallback.lang;
+        setSpeechStatus("The " + requestedLanguage +
+          " voice is unavailable. Reading with " + fallback.lang + ".");
+      } else {
+        setSpeechStatus("This language voice is not available in your browser.");
+        return;
+      }
+    } else {
+      utterance.voice = voice;
+    }
     utterance.onstart = function () {
       setSpeechStatus("Reading aloud…");
     };
@@ -165,6 +178,14 @@ padding:26px;box-shadow:0 4px 18px rgba(0,0,0,.3)}
     });
   }
   var languageButtons = document.querySelectorAll("[data-language]");
+  var showAll = document.getElementById("show-all-languages");
+  function showOnly(codes) {
+    languageButtons.forEach(function (button) {
+      button.hidden = codes.indexOf(button.dataset.language) === -1;
+    });
+    if (showAll) showAll.hidden = false;
+  }
+  if (languageButtons.length) showOnly(["as", "hi", "bn", "en"]);
   function showLocationSuggestions(position) {
       var latitude = position.coords.latitude;
       var longitude = position.coords.longitude;
@@ -201,7 +222,6 @@ padding:26px;box-shadow:0 4px 18px rgba(0,0,0,.3)}
           suggestions.map(function (code) {
             return document.querySelector("[data-language='" + code + "']").innerText;
           }).join(" · ") + ". You may choose any language below.";
-        var showAll = document.getElementById("show-all-languages");
         if (showAll) {
           showAll.hidden = false;
           showAll.addEventListener("click", function () {

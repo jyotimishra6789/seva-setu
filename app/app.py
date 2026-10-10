@@ -31,6 +31,7 @@ from werkzeug.utils import secure_filename
 from fpdf import FPDF
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_MAX_MB = 5
 
 config = configparser.ConfigParser()
 config.read(os.path.join(BASE_DIR, "config", "app.ini"))
@@ -38,7 +39,7 @@ config.read(os.path.join(BASE_DIR, "config", "app.ini"))
 app = Flask(__name__)
 app.secret_key = os.environ["SEWASETU_SECRET_KEY"]
 app.config["PERMANENT_SESSION_LIFETIME"] = 2 * 60 * 60
-app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024 + 256 * 1024
+app.config["MAX_CONTENT_LENGTH"] = UPLOAD_MAX_MB * 1024 * 1024 + 256 * 1024
 
 LANGUAGES = {
     "en": {"name": "English", "speech": "en-IN"},
@@ -74,7 +75,7 @@ TRANSLATIONS = {
             "Enter your mobile number and the one-time code sent to you.",
             "Enter your name exactly as it appears on your age proof document.",
             "Enter your address and bank account details. You can review all details before submit.",
-            "Upload an age proof document (Aadhaar, Voter ID, Ration card, or Birth certificate, max 5 MB).",
+            "Upload an age proof document (Aadhaar, Voter ID, Ration card, or Birth certificate, max {upload_limit}).",
             "Review your details on the final page, submit, and save or print the acknowledgment number."
         ],
         "safety": "Never share your OTP or bank PIN. The department will never charge a fee to submit this application.",
@@ -158,7 +159,7 @@ TRANSLATIONS = {
             "আপোনাৰ ম'বাইল নম্বৰ আৰু পঠোৱা এবাৰ ব্যৱহাৰযোগ্য ক'ড (OTP) দিয়ক।",
             "বয়সৰ প্ৰমাণপত্ৰত থকা মতে আপোনাৰ সম্পূৰ্ণ নাম দিয়ক।",
             "ঠিকনা আৰু বেংক একাউণ্টৰ তথ্য দিয়ক। আবেদন জমা দিয়াৰ আগতে সকলো পুনৰীক্ষণ কৰিব পাৰিব।",
-            "বয়সৰ প্ৰমাণপত্ৰ আপলোড কৰক (আধাৰ, ভোটাৰ আই ডি, ৰেচন কাৰ্ড, বা জন্ম প্ৰমাণপত্ৰ, সৰ্বাধিক ১০ MB)।",
+            "বয়সৰ প্ৰমাণপত্ৰ আপলোড কৰক (আধাৰ, ভোটাৰ আই ডি, ৰেচন কাৰ্ড, বা জন্ম প্ৰমাণপত্ৰ, সৰ্বাধিক {upload_limit})।",
             "শেষ পৃষ্ঠা পঢ়ি আবেদন জমা দিয়ক আৰু স্বীকৃতি নম্বৰ ৰাখক।"
         ],
         "safety": "আপোনাৰ OTP বা বেংক PIN কেতিয়াও নিদিব। আবেদন জমা দিবলৈ বিভাগে কোনো মাচুল নলয়।",
@@ -197,7 +198,7 @@ TRANSLATIONS = {
         "dbt_note": "পেঞ্চনৰ ধন পোনপটীয়াকৈ DBT যোগে এই একাউণ্টত জমা হ'ব। একাউণ্টটো আবেদনকাৰীৰ নিজৰ নামত হ'ব লাগিব।",
         "step5_title": "স্তৰ ৫/৬: প্ৰমাণপত্ৰ আপলোড",
         "upload_heading": "বয়সৰ প্ৰমাণপত্ৰ আপলোড কৰক",
-        "upload_help": "গ্ৰহণযোগ্য নথি: আধাৰ কাৰ্ড, ভোটাৰ আই ডি, ৰেচন কাৰ্ড, বা জন্ম প্ৰমাণপত্ৰ। ফৰ্মাট: JPG, PNG, বা PDF (১০ MB লৈকে)।",
+        "upload_help": "গ্ৰহণযোগ্য নথি: আধাৰ কাৰ্ড, ভোটাৰ আই ডি, ৰেচন কাৰ্ড, বা জন্ম প্ৰমাণপত্ৰ। ফৰ্মাট: JPG, PNG, বা PDF ({upload_limit} লৈকে)।",
         "select_doc": "নথি বাছনি কৰক", "upload_button": "আপলোড কৰি আগবাঢ়ক",
         "step6_title": "স্তৰ ৬/৬: পৰ্যালোচনা আৰু ঘোষণা",
         "review_heading": "আবেদনৰ তথ্য পৰীক্ষা কৰক",
@@ -326,7 +327,7 @@ TRANSLATIONS = {
             "আপনার মোবাইল নম্বর এবং পাঠানো কোড (OTP) দিন।",
             "বয়সের প্রমাণপত্রে যেমন আছে তেমন নাম লিখুন।",
             "ঠিকানা ও ব্যাঙ্ক অ্যাকাউন্টের তথ্য দিন। জমা দেওয়ার আগে পর্যালোচনা করুন।",
-            "বয়সের প্রমাণপত্র আপলোড করুন (আধার, ভোটার কার্ড, রেশন কার্ড, সর্বোচ্চ ১০ MB)।",
+            "বয়সের প্রমাণপত্র আপলোড করুন (আধার, ভোটার কার্ড, রেশন কার্ড, সর্বোচ্চ {upload_limit})।",
             "শেষ পৃষ্ঠা পড়ে আবেদন জমা দিন এবং স্বীকৃতি নম্বর রাখুন।"
         ],
         "safety": "আপনার OTP বা ব্যাঙ্ক PIN কখনও শেয়ার করবেন না। আবেদন জমা দিতে বিভাগ কোনও টাকা নেয় না।",
@@ -365,7 +366,7 @@ TRANSLATIONS = {
         "dbt_note": "পেনশন সরাসরি DBT মাধ্যমে এই অ্যাকাউন্টে জমা হবে। অ্যাকাউন্টটি আবেদনকারীর নিজের নামে হতে হবে।",
         "step5_title": "ধাপ ৫/৬: নথি আপলোড",
         "upload_heading": "বয়সের প্রমাণপত্র আপলোড করুন",
-        "upload_help": "গ্রহণযোগ্য নথি: আধার কার্ড, ভোটার কার্ড, রেশন কার্ড, জন্ম সার্টিফিকেট। ফর্ম্যাট: JPG, PNG, বা PDF (১০ MB পর্যন্ত)।",
+        "upload_help": "গ্রহণযোগ্য নথি: আধার কার্ড, ভোটার কার্ড, রেশন কার্ড, জন্ম সার্টিফিকেট। ফর্ম্যাট: JPG, PNG, বা PDF ({upload_limit} পর্যন্ত)।",
         "select_doc": "নথি বাছুন", "upload_button": "আপলোড করে এগিয়ে যান",
         "step6_title": "ধাপ ৬/৬: পর্যালোচনা ও ঘোষণা",
         "review_heading": "আবেদনের বিবরণ পর্যালোচনা করুন",
@@ -475,7 +476,7 @@ TRANSLATIONS = {
             "आपला मोबाइल क्रमांक आणि पाठवलेला एकवेळचा कोड (OTP) टाका.",
             "वयाच्या पुराव्याच्या कागदपत्रावर जसे नाव आहे तसेच आपले पूर्ण नाव टाका.",
             "आपला पत्ता आणि बँक खात्याची माहिती टाका. अर्ज सादर करण्यापूर्वी सर्व माहिती तपासता येईल.",
-            "वयाचा पुरावा अपलोड करा (आधार, मतदार ओळखपत्र, रेशन कार्ड किंवा जन्म प्रमाणपत्र, कमाल १० MB).",
+            "वयाचा पुरावा अपलोड करा (आधार, मतदार ओळखपत्र, रेशन कार्ड किंवा जन्म प्रमाणपत्र, कमाल {upload_limit}).",
             "शेवटच्या पृष्ठावर माहिती तपासा, अर्ज सादर करा आणि पोचपावती क्रमांक जतन करा."
         ],
         "safety": "आपला OTP किंवा बँक PIN कधीही शेअर करू नका. अर्ज सादर करण्यासाठी विभाग कोणतेही शुल्क घेत नाही.",
@@ -499,7 +500,7 @@ TRANSLATIONS = {
         "step4_title": "टप्पा ४/६: बँक माहिती", "bank_details_title": "निवृत्तीवेतन जमा करण्यासाठी बँक माहिती", "bank_account_label": "बँक खाते क्रमांक", "ifsc_label": "IFSC कोड",
         "dbt_note": "निवृत्तीवेतन थेट लाभ हस्तांतरणाद्वारे (DBT) या खात्यात जमा केले जाईल. खाते अर्जदाराच्या नावावर असावे.",
         "step5_title": "टप्पा ५/६: कागदपत्र अपलोड", "upload_heading": "वयाचा पुरावा अपलोड करा",
-        "upload_help": "स्वीकारलेली कागदपत्रे: आधार कार्ड, मतदार ओळखपत्र, रेशन कार्ड, जन्म प्रमाणपत्र किंवा शाळेचे प्रमाणपत्र. JPG, PNG किंवा PDF (१० MB पर्यंत).",
+        "upload_help": "स्वीकारलेली कागदपत्रे: आधार कार्ड, मतदार ओळखपत्र, रेशन कार्ड, जन्म प्रमाणपत्र किंवा शाळेचे प्रमाणपत्र. JPG, PNG किंवा PDF ({upload_limit} पर्यंत).",
         "select_doc": "कागदपत्र निवडा", "upload_button": "अपलोड करा आणि पुढे जा",
         "step6_title": "टप्पा ६/६: तपासणी आणि घोषणा", "review_heading": "अर्जाच्या माहितीची तपासणी करा", "review_subheading": "अर्ज सादर करण्यापूर्वी सर्व माहिती अचूक असल्याची खात्री करा.",
         "edit_link": "दुरुस्त करा", "uploaded_doc_label": "अपलोड केलेले कागदपत्र", "doc_uploaded": "कागदपत्र यशस्वीरीत्या अपलोड झाले",
@@ -527,27 +528,36 @@ def mask_account(val):
 
 @app.context_processor
 def language_context():
-    language = session.get("language", "en")
+    language = request.args.get("lang") or request.cookies.get("language")
+    if language not in LANGUAGES:
+        language = session.get("language")
+    if language not in LANGUAGES:
+        header = request.accept_languages.best_match(list(LANGUAGES))
+        language = header if header in LANGUAGES else "en"
     translated = dict(TRANSLATIONS["en"])
     translated.update(TRANSLATIONS.get(language, {}))
+    digit_maps = {
+        "as": str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯"),
+        "bn": str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯"),
+        "hi": str.maketrans("0123456789", "०१२३४५६७८९"),
+        "mr": str.maketrans("0123456789", "०१२३४५६७८९"),
+    }
+    upload_limit = ("%d MB" % UPLOAD_MAX_MB).translate(
+        digit_maps.get(language, str.maketrans("", ""))
+    )
+    translated = {
+        key: value.format(upload_limit=upload_limit)
+        if isinstance(value, str) else value
+        for key, value in translated.items()
+    }
     return {
         "language": language,
         "language_info": LANGUAGES.get(language, LANGUAGES["en"]),
         "t": translated,
         "mask_account": mask_account,
+        "upload_max_mb": UPLOAD_MAX_MB,
+        "now_ist": now_ist,
     }
-
-
-@app.before_request
-def require_language_before_citizen_flow():
-    # The homepage shows the language chooser itself; protect the application flow.
-    protected_endpoints = {
-        "apply", "verify", "form_step", "upload",
-        "declaration", "status_login", "view_application",
-        "edit_application", "withdraw_application", "reset_password",
-    }
-    if request.endpoint in protected_endpoints and "language" not in session:
-        return redirect(url_for("choose_language"))
 
 
 @app.after_request
@@ -555,6 +565,9 @@ def prevent_stale_language_pages(response):
     if response.content_type.startswith("text/html"):
         response.headers["Cache-Control"] = "no-store, max-age=0"
         response.headers["Pragma"] = "no-cache"
+    language = session.get("language")
+    if language in LANGUAGES:
+        response.set_cookie("language", language, max_age=31536000, samesite="Lax")
     return response
 
 
@@ -624,6 +637,13 @@ LOGIN_ATTEMPTS = {}
 
 def now_ist():
     return datetime.now(IST).replace(tzinfo=None)
+
+
+def effective_status(status, submitted_at, current_time=None):
+    if (status == "PENDING" and submitted_at and
+            submitted_at <= (current_time or now_ist()) - timedelta(days=SLA_DAYS)):
+        return "DEEMED_APPROVED"
+    return status
 
 
 import logging
@@ -774,6 +794,9 @@ def citizen_owns_application(app_id):
 
 @app.route("/")
 def index():
+    requested_language = request.args.get("lang")
+    if requested_language in LANGUAGES:
+        session["language"] = requested_language
     return render_template(
         "index.html",
         hours_left=deadline_remaining(),
@@ -791,7 +814,9 @@ def choose_language():
         if language not in LANGUAGES:
             abort(400)
         session["language"] = language
-        return redirect(url_for("index"))
+        response = redirect(url_for("index"))
+        response.set_cookie("language", language, max_age=31536000, samesite="Lax")
+        return response
     return redirect(url_for("index", change="1"))
 
 
@@ -1119,7 +1144,9 @@ def generate_acknowledgment(cur, app_id):
               "Village", "Block", "Bank Account", "IFSC", "Submitted At", "Status"]
 
     pdf.set_font(font_family, "", 10)
-    for label, val in zip(labels, row):
+    display_row = list(row)
+    display_row[9] = effective_status(row[9], row[8])
+    for label, val in zip(labels, display_row):
         display_val = str(val) if val is not None else ""
         if label == "Bank Account":
             display_val = mask_account(display_val)
@@ -1219,7 +1246,11 @@ def view_application(app_id):
         conn.close()
     if not row:
         abort(404)
-    return render_template("application.html", a=row, app_id=app_id)
+    display_row = list(row)
+    display_row[8] = effective_status(row[8], row[9])
+    if display_row[8] == "DEEMED_APPROVED" and not display_row[10]:
+        display_row[10] = row[9] + timedelta(days=SLA_DAYS)
+    return render_template("application.html", a=display_row, app_id=app_id)
 
 
 @app.route("/application/<int:app_id>/edit", methods=["GET", "POST"])
@@ -1377,11 +1408,17 @@ def admin_dashboard():
         cur.execute("SELECT block, count(*) FROM applications WHERE status = 'PENDING' "
                     "GROUP BY block ORDER BY count(*) DESC")
         by_block = cur.fetchall()
+        cur.execute(
+            "SELECT completed_at, success FROM job_runs "
+            "WHERE job_name = 'deemed_approval' ORDER BY started_at DESC LIMIT 1"
+        )
+        job_run = cur.fetchone()
     finally:
         cur.close()
         conn.close()
     return render_template("admin_dashboard.html", by_status=by_status,
-                           overdue=overdue, by_block=by_block, sla=SLA_DAYS)
+                           overdue=overdue, by_block=by_block, sla=SLA_DAYS,
+                           job_run=job_run)
 
 
 @app.route("/admin/applications")

@@ -6,7 +6,8 @@ Under the Purvanchal Right to Public Services Act, an application not processed
 within the statutory SLA stands approved. This job marks such applications
 DEEMED_APPROVED and notifies the applicant by SMS.
 
-Scheduled via cron, 02:00 daily. See deploy/crontab.
+Scheduled hourly via cron. The scheduler entrypoint also runs this once at
+startup so old pending applications are caught up immediately.
 """
 
 import os
@@ -51,63 +52,101 @@ def run_deemed_approval(dry_run=False):
     cur = conn.cursor()
     run_time = now_ist()
     cutoff = run_time - timedelta(days=SLA_DAYS)
-
-    if dry_run:
-        cur.execute(
-            """SELECT count(*), min(submitted_at), max(submitted_at)
-               FROM applications
-               WHERE status = 'PENDING' AND submitted_at < %s""",
-            (cutoff,))
-        row = cur.fetchone()
-        count = row[0]
-        min_sub = row[1]
-        max_sub = row[2]
-        cur.close()
-        conn.close()
-        print("DRY RUN: %d applications eligible for deemed approval." % count)
-        if count > 0:
-            print("Earliest submitted: %s, Latest eligible: %s" % (min_sub, max_sub))
-            print("Decision dates will be back-dated to submitted_at + %d days." % SLA_DAYS)
-        return count
-
-    # Legally, the deemed decision date is submitted_at + SLA_DAYS
     cur.execute(
-        """UPDATE applications
-           SET status = 'DEEMED_APPROVED',
-               decided_at = submitted_at + (%s || ' days')::interval,
-               decided_by = 'RTPS-AUTO'
-           WHERE status = 'PENDING' AND submitted_at < %s
-           RETURNING application_no, mobile, decided_at""",
-        (SLA_DAYS, cutoff))
-    rows = cur.fetchall()
+        """CREATE TABLE IF NOT EXISTS job_runs (
+               id BIGSERIAL PRIMARY KEY,
+               job_name VARCHAR(100) NOT NULL,
+               started_at TIMESTAMP NOT NULL,
+               completed_at TIMESTAMP,
+               success BOOLEAN NOT NULL DEFAULT FALSE,
+               approved_count INTEGER NOT NULL DEFAULT 0,
+               error_message TEXT
+           )"""
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS job_runs_name_started_idx "
+        "ON job_runs (job_name, started_at DESC)"
+    )
+    conn.commit()
+    cur.execute(
+        """INSERT INTO job_runs (job_name, started_at)
+           VALUES ('deemed_approval', %s) RETURNING id""",
+        (run_time,))
+    run_id = cur.fetchone()[0]
     conn.commit()
 
-    sms_success = 0
-    sms_failed = 0
-    for app_no, mobile, decided_at in rows:
-        try:
-            resp = requests.post(
-                SMS_GATEWAY_URL + "/api/send",
-                json={
-                    "to": mobile,
-                    "text": "Sewa Setu: your pension application %s stands approved under the RTPS Act." % app_no,
-                },
-                timeout=5,
-            )
-            if resp.status_code in (200, 201):
-                sms_success += 1
-            else:
-                sms_failed += 1
-                print("SMS notification gateway error for %s: %s" % (app_no, resp.status_code), file=sys.stderr)
-        except requests.RequestException as exc:
-            sms_failed += 1
-            print("SMS notification failed for %s: %s" % (app_no, exc), file=sys.stderr)
+    try:
+        if dry_run:
+            cur.execute(
+                """SELECT count(*), min(submitted_at), max(submitted_at)
+                   FROM applications
+                   WHERE status = 'PENDING' AND submitted_at < %s""",
+                (cutoff,))
+            row = cur.fetchone()
+            count = row[0]
+            min_sub = row[1]
+            max_sub = row[2]
+            cur.execute(
+                "UPDATE job_runs SET completed_at = %s, success = TRUE, "
+                "approved_count = %s WHERE id = %s",
+                (now_ist(), count, run_id))
+            conn.commit()
+            print("DRY RUN: %d applications eligible for deemed approval." % count)
+            if count > 0:
+                print("Earliest submitted: %s, Latest eligible: %s" % (min_sub, max_sub))
+                print("Decision dates will be back-dated to submitted_at + %d days." % SLA_DAYS)
+            return count
 
-    print("%s deemed approval: %d applications approved (SMS sent: %d, failed: %d)"
-          % (run_time.strftime("%Y-%m-%d %H:%M:%S"), len(rows), sms_success, sms_failed))
-    cur.close()
-    conn.close()
-    return len(rows)
+        cur.execute(
+            """UPDATE applications
+               SET status = 'DEEMED_APPROVED',
+                   decided_at = submitted_at + (%s || ' days')::interval,
+                   decided_by = 'RTPS-AUTO'
+               WHERE status = 'PENDING' AND submitted_at < %s
+               RETURNING application_no, mobile, decided_at""",
+            (SLA_DAYS, cutoff))
+        rows = cur.fetchall()
+        conn.commit()
+
+        sms_success = 0
+        sms_failed = 0
+        for app_no, mobile, decided_at in rows:
+            try:
+                resp = requests.post(
+                    SMS_GATEWAY_URL + "/api/send",
+                    json={
+                        "to": mobile,
+                        "text": "Sewa Setu: your pension application %s stands approved under the RTPS Act." % app_no,
+                    },
+                    timeout=5,
+                )
+                if resp.status_code in (200, 201):
+                    sms_success += 1
+                else:
+                    sms_failed += 1
+                    print("SMS notification gateway error for %s: %s" % (app_no, resp.status_code), file=sys.stderr)
+            except requests.RequestException as exc:
+                sms_failed += 1
+                print("SMS notification failed for %s: %s" % (app_no, exc), file=sys.stderr)
+
+        cur.execute(
+            "UPDATE job_runs SET completed_at = %s, success = TRUE, "
+            "approved_count = %s WHERE id = %s",
+            (now_ist(), len(rows), run_id))
+        conn.commit()
+        print("%s deemed approval: %d applications approved (SMS sent: %d, failed: %d)"
+              % (run_time.strftime("%Y-%m-%d %H:%M:%S"), len(rows), sms_success, sms_failed))
+        return len(rows)
+    except Exception as exc:
+        conn.rollback()
+        cur.execute(
+            "UPDATE job_runs SET completed_at = %s, error_message = %s WHERE id = %s",
+            (now_ist(), str(exc)[:1000], run_id))
+        conn.commit()
+        raise
+    finally:
+        cur.close()
+        conn.close()
 
 
 def main():

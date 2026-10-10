@@ -34,12 +34,15 @@ services:
 
   scheduler:
     build: ./app
-    command: ["cron", "-f"]
+    entrypoint: ["/app/deploy/scheduler-entrypoint.sh"]
     depends_on:
       db:
         condition: service_healthy
     environment:
       SEWASETU_DB_PASSWORD: ${SEWASETU_DB_PASSWORD}
+      SEWASETU_SECRET_KEY: ${SEWASETU_SECRET_KEY}
+      SEWASETU_ADMIN_PASSWORD: ${SEWASETU_ADMIN_PASSWORD}
+      SEWASETU_ADMIN_USERNAME: ${SEWASETU_ADMIN_USERNAME:-admin}
     volumes:
       - applogs:/var/log/sewasetu
 

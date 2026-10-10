@@ -14,6 +14,13 @@
 </table>
 
 <h3 style="color:#a33">Pending beyond {{ sla }}-day SLA: {{ overdue }}</h3>
+{% if not job_run or not job_run[0] or not job_run[1] or
+      (now_ist() - job_run[0]).total_seconds() > 10800 %}
+<p class="flash" role="alert">Warning: deemed-approval job has not completed successfully within the last 3 hours.</p>
+{% endif %}
+{% if job_run and job_run[0] %}
+<p class="note">Last deemed-approval run: {{ job_run[0] }}</p>
+{% endif %}
 
 <h3>Pending by Block</h3>
 <table class="tbl" style="max-width:400px">

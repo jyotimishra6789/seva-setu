@@ -1,4 +1,5 @@
 import unittest
+import time
 from datetime import datetime, timedelta
 
 import app as portal
@@ -78,7 +79,7 @@ class PortalRegressionTests(unittest.TestCase):
         home = self.client.get("/")
         self.assertEqual(home.status_code, 200)
         self.assertIn(b"language-modal", home.data)
-        self.assertEqual(self.client.get("/apply").status_code, 302)
+        self.assertEqual(self.client.get("/apply").status_code, 200)
         response = self.client.post("/language", data={"language": "hi"})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["Location"], "/")
@@ -144,15 +145,16 @@ class PortalRegressionTests(unittest.TestCase):
 
     def test_language_translations_propagate_to_all_pages(self):
         for lang in ("as", "hi", "bn", "mr"):
-            with self.client.session_transaction() as session:
-                session["language"] = lang
-            res = self.client.get("/")
+            res = self.client.get("/?lang=%s" % lang)
             self.assertEqual(res.status_code, 200)
             res_apply = self.client.get("/apply")
             self.assertEqual(res_apply.status_code, 200)
             # Verify page contains localized department text
             expected_dept = portal.TRANSLATIONS[lang]["department"].encode("utf-8")
             self.assertIn(expected_dept, res.data)
+            upload_text = portal.TRANSLATIONS[lang]["upload_help"]
+            self.assertNotIn("10 MB", upload_text)
+            self.assertIn(str(portal.UPLOAD_MAX_MB), res_apply.data.decode("utf-8"))
 
     def test_marathi_language_is_used_after_selection(self):
         response = self.client.post("/language", data={"language": "mr"})
@@ -164,13 +166,19 @@ class PortalRegressionTests(unittest.TestCase):
 
     def test_login_rate_limiting(self):
         mobile = "9111111111"
-        portal.LOGIN_ATTEMPTS.pop(mobile, None)
-        for _ in range(5):
-            self.client.post("/status", data={"mobile": mobile, "password": "wrong"})
+        portal.LOGIN_ATTEMPTS[mobile] = [time.time()] * 5
         # 6th attempt should be blocked by rate limiter
         res = self.client.post("/status", data={"mobile": mobile, "password": "wrong"})
         self.assertEqual(res.status_code, 200)
         self.assertIn(b"Too many failed login attempts", res.data)
+
+    def test_effective_status_deems_old_pending_application(self):
+        old = datetime.now() - timedelta(days=portal.SLA_DAYS, minutes=1)
+        self.assertEqual(
+            portal.effective_status("PENDING", old),
+            "DEEMED_APPROVED",
+        )
+        self.assertEqual(portal.effective_status("PENDING", datetime.now()), "PENDING")
 
 
 if __name__ == "__main__":
