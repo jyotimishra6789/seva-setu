@@ -12,7 +12,6 @@ import os
 import io
 import csv
 import time
-import random
 import hashlib
 import hmac
 import configparser
@@ -630,11 +629,9 @@ BLOCKS = ["Sonari", "Rajapara", "Dhemaji Pathar", "Borgaon", "Namti", "Khelua"]
 DB_POOL = None
 DB_POOL_SEMAPHORE = None
 DB_POOL_MAX = int(os.environ.get("SEWASETU_DB_POOL_MAX", "12"))
+DB_SCHEMA_READY = False
 
 # Rate limiting for status login: mobile -> list of timestamps
-LOGIN_ATTEMPTS = {}
-
-
 def now_ist():
     return datetime.now(IST).replace(tzinfo=None)
 
@@ -671,6 +668,7 @@ def get_db():
             password=os.environ["SEWASETU_DB_PASSWORD"],
         )
         DB_POOL_SEMAPHORE = threading.BoundedSemaphore(DB_POOL_MAX)
+    init_db()
     if not DB_POOL_SEMAPHORE.acquire(timeout=10):
         app.logger.error("database connection pool exhausted after 10 seconds")
         abort(503, description="The service is temporarily busy. Please try again.")
@@ -724,6 +722,142 @@ def parse_date_of_birth(value):
         except ValueError:
             continue
     return None
+
+
+def validate_application_fields(data):
+    errors = {}
+    cleaned = dict(data)
+    cleaned["applicant_name"] = sanitize(data.get("applicant_name", ""))
+    cleaned["village"] = sanitize(data.get("village", ""))
+    cleaned["block"] = str(data.get("block", "")).strip()
+    cleaned["bank_account"] = "".join(str(data.get("bank_account", "")).split())
+    cleaned["ifsc"] = str(data.get("ifsc", "")).strip().upper()
+    cleaned["dob"] = str(data.get("dob", "")).strip()
+
+    if not cleaned["applicant_name"]:
+        errors["applicant_name"] = "Please enter the applicant's full name."
+    elif len(cleaned["applicant_name"]) > 100:
+        errors["applicant_name"] = "The applicant name must be 100 characters or fewer."
+
+    dob = parse_date_of_birth(cleaned["dob"])
+    if dob is None:
+        errors["dob"] = "Please enter a valid date of birth in DD/MM/YYYY format."
+    else:
+        today = date.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        if age < MIN_AGE:
+            errors["dob"] = "The applicant must be at least %d years old." % MIN_AGE
+        cleaned["parsed_dob"] = dob
+
+    if not cleaned["village"]:
+        errors["village"] = "Please enter your village or town."
+    if cleaned["block"] not in BLOCKS:
+        errors["block"] = "Please select a valid block."
+    if not (cleaned["bank_account"].isdigit() and
+            8 <= len(cleaned["bank_account"]) <= 20):
+        errors["bank_account"] = "Bank account must contain 8 to 20 digits."
+    if (len(cleaned["ifsc"]) != 11 or not cleaned["ifsc"][:4].isalpha() or
+            cleaned["ifsc"][4] != "0" or not cleaned["ifsc"][5:].isalnum()):
+        errors["ifsc"] = "IFSC must be 11 characters with 0 as its 5th character."
+    return cleaned, errors
+
+
+def init_db():
+    """Apply safe schema upgrades once per worker while serializing workers."""
+    global DB_SCHEMA_READY
+    if DB_SCHEMA_READY:
+        return
+    conn = psycopg2.connect(
+        host=config.get("database", "host"),
+        port=config.get("database", "port"),
+        dbname=config.get("database", "name"),
+        user=config.get("database", "user"),
+        password=os.environ["SEWASETU_DB_PASSWORD"],
+    )
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT pg_advisory_lock(%s)", (1847392017,))
+        cur.execute("ALTER TABLE portal_users ALTER COLUMN password_hash TYPE TEXT")
+        cur.execute("ALTER TABLE applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP")
+        cur.execute("ALTER TABLE otps ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS auth_attempts (
+                   identity VARCHAR(100) PRIMARY KEY,
+                   attempt_type VARCHAR(30) NOT NULL,
+                   failed_count INTEGER NOT NULL DEFAULT 0,
+                   first_failed_at TIMESTAMP NOT NULL,
+                   blocked_until TIMESTAMP
+               )"""
+        )
+        cur.execute("CREATE INDEX IF NOT EXISTS applications_status_submitted_idx "
+                    "ON applications (status, submitted_at)")
+        cur.execute("CREATE INDEX IF NOT EXISTS applications_mobile_submitted_idx "
+                    "ON applications (mobile, submitted_at DESC)")
+        cur.execute("CREATE INDEX IF NOT EXISTS otps_mobile_created_idx "
+                    "ON otps (mobile, created_at DESC)")
+        conn.commit()
+        DB_SCHEMA_READY = True
+    finally:
+        cur.execute("SELECT pg_advisory_unlock(%s)", (1847392017,))
+        cur.close()
+        conn.close()
+
+
+def auth_attempt_blocked(identity, attempt_type):
+    now = now_ist()
+    key = "%s:%s" % (attempt_type, identity)
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT failed_count, first_failed_at, blocked_until "
+                    "FROM auth_attempts WHERE identity = %s FOR UPDATE", (key,))
+        row = cur.fetchone()
+        if not row:
+            return False
+        if row[2] and row[2] > now:
+            return True
+        if now - row[1] >= timedelta(minutes=15):
+            cur.execute("DELETE FROM auth_attempts WHERE identity = %s", (key,))
+            conn.commit()
+            return False
+        return row[0] >= 5
+    finally:
+        cur.close()
+        conn.close()
+
+
+def record_auth_failure(identity, attempt_type):
+    now = now_ist()
+    key = "%s:%s" % (attempt_type, identity)
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """INSERT INTO auth_attempts
+               (identity, attempt_type, failed_count, first_failed_at, blocked_until)
+               VALUES (%s, %s, 1, %s, NULL)
+               ON CONFLICT (identity) DO UPDATE
+               SET failed_count = auth_attempts.failed_count + 1,
+                   blocked_until = CASE
+                       WHEN auth_attempts.failed_count + 1 >= 5
+                       THEN %s ELSE auth_attempts.blocked_until END""",
+            (key, attempt_type, now, now + timedelta(minutes=15)))
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+
+def clear_auth_failures(identity, attempt_type):
+    key = "%s:%s" % (attempt_type, identity)
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM auth_attempts WHERE identity = %s", (key,))
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
 
 
 def document_signature_matches(extension, content):
@@ -893,9 +1027,9 @@ def apply():
             if cur.fetchone()[0] >= 5:
                 flash("Too many OTP requests. Please try again in 15 minutes.")
                 return render_template("apply.html")
-            code = str(random.randint(100000, 999999))
-            cur.execute("INSERT INTO otps (mobile, code, created_at) VALUES (%s, %s, %s)",
-                        (mobile, code, now_ist()))
+            code = str(secrets.randbelow(900000) + 100000)
+            cur.execute("INSERT INTO otps (mobile, code, created_at, failed_attempts) "
+                        "VALUES (%s, %s, %s, 0)", (mobile, code, now_ist()))
             conn.commit()
         finally:
             cur.close()
@@ -918,24 +1052,32 @@ def verify():
         conn = get_db()
         cur = conn.cursor()
         try:
-            cur.execute("SELECT code, created_at FROM otps WHERE mobile = %s "
+            cur.execute("SELECT code, created_at, failed_attempts FROM otps WHERE mobile = %s "
                         "ORDER BY id DESC LIMIT 1", (mobile,))
             row = cur.fetchone()
+            valid = row and row[2] < 5 and hmac.compare_digest(row[0], code)
+            if valid:
+                age = (now_ist() - row[1]).total_seconds()
+                if age > OTP_VALIDITY_SECONDS:
+                    flash("OTP expired. Please request a new OTP.")
+                    return redirect(url_for("apply"))
+                session["verified_mobile"] = mobile
+                return redirect(url_for("form_step", step=1))
+            if row:
+                cur.execute("UPDATE otps SET failed_attempts = failed_attempts + 1 "
+                            "WHERE mobile = %s AND id = (SELECT id FROM otps "
+                            "WHERE mobile = %s ORDER BY id DESC LIMIT 1)",
+                            (mobile, mobile))
+                conn.commit()
         finally:
             cur.close()
             conn.close()
 
-        if row and row[0] == code:
-            age = (now_ist() - row[1]).total_seconds()
-            if age > OTP_VALIDITY_SECONDS:
-                app.logger.warning("otp expired mobile=%s age=%ds" % (mobile, int(age)))
-                flash("OTP expired. Please request a new OTP.")
-                return redirect(url_for("apply"))
-            session["verified_mobile"] = mobile
-            return redirect(url_for("form_step", step=1))
-        flash("Invalid OTP. Please check the code sent to your mobile.")
+        if row and row[2] >= 4:
+            flash("Too many incorrect OTP guesses. Please request a new OTP.")
+        else:
+            flash("Invalid OTP. Please check the code sent to your mobile.")
     return render_template("verify.html", mobile=mobile)
-
 
 @app.route("/form/<int:step>", methods=["GET", "POST"])
 def form_step(step):
@@ -948,6 +1090,21 @@ def form_step(step):
         data = session.get("form_data", {})
         for k, v in request.form.items():
             data[k] = v
+        cleaned, errors = validate_application_fields(data)
+        fields = {
+            1: ("applicant_name", "dob"),
+            2: ("village", "block"),
+            3: ("bank_account", "ifsc"),
+        }
+        step_errors = {key: value for key, value in errors.items()
+                       if key in fields[step]}
+        data.update({key: cleaned[key] for key in cleaned if key != "parsed_dob"})
+        if step_errors:
+            session["form_data"] = data
+            for message in step_errors.values():
+                flash(message)
+            return render_template("form_step%d.html" % step,
+                                   data=data, blocks=BLOCKS)
         session["form_data"] = data
         if step < 3:
             return redirect(url_for("form_step", step=step + 1))
@@ -978,8 +1135,8 @@ def upload():
         if not document_signature_matches(extension, content):
             flash("The uploaded file does not match its document type.")
             return render_template("upload.html")
-        if len(content) > 5 * 1024 * 1024:
-            flash("The document must be 5 MB or smaller.")
+        if len(content) > UPLOAD_MAX_MB * 1024 * 1024:
+            flash("The document must be %d MB or smaller." % UPLOAD_MAX_MB)
             return render_template("upload.html")
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         filename = "%s_%s%s" % (session["verified_mobile"], secrets.token_hex(8), extension)
@@ -1006,44 +1163,30 @@ def handle_submission():
     data = session.get("form_data", {})
     doc_path = session.get("doc_path", "")
 
-    name = sanitize(data.get("applicant_name", ""))
-    village = sanitize(data.get("village", ""))
-    block = data.get("block", "").strip()
+    cleaned, errors = validate_application_fields(data)
+    if errors:
+        for message in errors.values():
+            flash(message)
+        first_error = next(iter(errors))
+        step = 1 if first_error in ("applicant_name", "dob") else (
+            2 if first_error in ("village", "block") else 3)
+        return redirect(url_for("form_step", step=step))
+
+    name = cleaned["applicant_name"]
+    village = cleaned["village"]
+    block = cleaned["block"]
     gender = data.get("gender", "")
     marital = data.get("marital_status", "")
     husband_name = sanitize(data.get("husband_name", ""))
     husband_employer = sanitize(data.get("husband_employer", ""))
-    bank_account = data.get("bank_account", "").strip()
-    ifsc = data.get("ifsc", "").strip().upper()
-    dob_raw = data.get("dob", "").strip()
+    bank_account = cleaned["bank_account"]
+    ifsc = cleaned["ifsc"]
 
-    if not name:
-        flash("Please enter the applicant's full name.")
-        return redirect(url_for("form_step", step=1))
-    if not dob_raw:
-        flash("Please enter the date of birth.")
-        return redirect(url_for("form_step", step=1))
-    if not village or not block:
-        flash("Please enter your complete address and block.")
-        return redirect(url_for("form_step", step=2))
-    if not bank_account or not ifsc:
-        flash("Please enter your bank account number and IFSC code.")
-        return redirect(url_for("form_step", step=3))
     if not doc_path or not os.path.isfile(doc_path):
         flash("Please upload your age proof document before submitting.")
         return redirect(url_for("upload"))
 
-    # Lenient date parsing: prioritize DD/MM/YYYY for India
-    dob = parse_date_of_birth(dob_raw)
-    if dob is None:
-        flash("Please enter a valid date of birth in DD/MM/YYYY format.")
-        return redirect(url_for("form_step", step=1))
-
-    today = date.today()
-    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-    if age < MIN_AGE:
-        flash("Applicant must be 60 years of age or older to be eligible.")
-        return redirect(url_for("form_step", step=1))
+    dob = cleaned["parsed_dob"]
 
     if datetime.now(IST) > SCHEME_DEADLINE:
         flash("The application deadline has passed.")
@@ -1277,11 +1420,25 @@ def edit_application(app_id):
 
     if request.method == "POST":
         form = request.form
-        dob_raw = form.get("dob", "").strip()
-        dob = None
-        dob = parse_date_of_birth(dob_raw)
+        data = {
+            "applicant_name": form.get("applicant_name", ""),
+            "dob": form.get("dob", ""),
+            "village": form.get("village", ""),
+            "block": form.get("block", ""),
+            "bank_account": form.get("bank_account", ""),
+            "ifsc": form.get("ifsc", ""),
+        }
+        cleaned, errors = validate_application_fields(data)
+        if errors:
+            for message in errors.values():
+                flash(message)
+            edit_row = (row[0], cleaned["applicant_name"], cleaned["dob"],
+                        row[3], row[4], row[5], row[6], row[7],
+                        cleaned["village"], cleaned["block"],
+                        cleaned["bank_account"], cleaned["ifsc"])
+            return render_template("edit_application.html", a=edit_row, blocks=BLOCKS)
+        dob = cleaned["parsed_dob"]
         if dob is None:
-            flash("Please enter a valid date of birth in DD/MM/YYYY format.")
             return render_template("edit_application.html", a=row, blocks=BLOCKS)
 
         conn = get_db()
@@ -1292,11 +1449,10 @@ def edit_application(app_id):
                    marital_status=%s, husband_name=%s, husband_employer=%s,
                    village=%s, block=%s, bank_account=%s, ifsc=%s, updated_at=%s
                    WHERE id=%s AND mobile=%s AND status='PENDING'""",
-                (sanitize(form.get("applicant_name")), dob, form.get("gender", ""),
+                (cleaned["applicant_name"], dob, form.get("gender", ""),
                  form.get("marital_status", ""), sanitize(form.get("husband_name")),
                  sanitize(form.get("husband_employer")), sanitize(form.get("village")),
-                 form.get("block", ""), form.get("bank_account", "").strip(),
-                 form.get("ifsc", "").strip().upper(), now_ist(),
+                 cleaned["block"], cleaned["bank_account"], cleaned["ifsc"], now_ist(),
                  app_id, session["portal_mobile"]))
             conn.commit()
         finally:

@@ -1,5 +1,5 @@
 import unittest
-import time
+from unittest.mock import patch
 from datetime import datetime, timedelta
 
 import app as portal
@@ -166,9 +166,8 @@ class PortalRegressionTests(unittest.TestCase):
 
     def test_login_rate_limiting(self):
         mobile = "9111111111"
-        portal.LOGIN_ATTEMPTS[mobile] = [time.time()] * 5
-        # 6th attempt should be blocked by rate limiter
-        res = self.client.post("/status", data={"mobile": mobile, "password": "wrong"})
+        with patch.object(portal, "auth_attempt_blocked", return_value=True):
+            res = self.client.post("/status", data={"mobile": mobile, "password": "wrong"})
         self.assertEqual(res.status_code, 200)
         self.assertIn(b"Too many failed login attempts", res.data)
 
@@ -179,6 +178,19 @@ class PortalRegressionTests(unittest.TestCase):
             "DEEMED_APPROVED",
         )
         self.assertEqual(portal.effective_status("PENDING", datetime.now()), "PENDING")
+
+    def test_edit_validation_rejects_blank_name_bad_bank_and_young_dob(self):
+        cleaned, errors = portal.validate_application_fields({
+            "applicant_name": "",
+            "dob": "01/01/1990",
+            "village": "Namti",
+            "block": "Namti",
+            "bank_account": "abc",
+            "ifsc": "SBIN0001234",
+        })
+        self.assertIn("applicant_name", errors)
+        self.assertIn("dob", errors)
+        self.assertIn("bank_account", errors)
 
 
 if __name__ == "__main__":

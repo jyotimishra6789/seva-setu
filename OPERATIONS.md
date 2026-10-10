@@ -27,9 +27,15 @@ ALTER TABLE portal_users ALTER COLUMN password_hash TYPE TEXT;
 
 ## Deemed approval
 
-The scheduler runs `app/scripts/deemed_approval.py` at 02:00 each day. It reads
+The scheduler entrypoint writes the `SEWASETU_*` runtime variables to the
+root-only `/etc/sewasetu.env` file, runs `app/scripts/deemed_approval.py` once
+as a deployment catch-up, and then runs it hourly through cron. The job reads
 the same `app/config/app.ini` file as the web process and marks untouched
 pending applications older than the configured SLA as `DEEMED_APPROVED`.
+Every run is recorded in `job_runs`; the admin dashboard warns when the last
+successful run is more than three hours old. Citizen status and acknowledgment
+PDFs also calculate deemed approval from the 15-day cutoff, so display does not
+depend on the scheduler having run.
 
 Check `/var/log/sewasetu/cron.log` and the database query below after deployment:
 
@@ -37,7 +43,7 @@ Check `/var/log/sewasetu/cron.log` and the database query below after deployment
 SELECT status, count(*) FROM applications GROUP BY status;
 ```
 
-The `applications_status_submitted_idx` index supports both the nightly job and
+The `applications_status_submitted_idx` index supports both the hourly job and
 the pending dashboard. Existing records are not deleted by corrections or
 withdrawals; withdrawn rows remain available for audit.
 
