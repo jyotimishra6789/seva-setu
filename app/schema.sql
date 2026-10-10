@@ -35,6 +35,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS applications_active_mobile_uidx
     WHERE status <> 'WITHDRAWN';
 CREATE INDEX IF NOT EXISTS applications_status_submitted_idx
     ON applications (status, submitted_at);
+CREATE INDEX IF NOT EXISTS applications_mobile_submitted_idx
+    ON applications (mobile, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS applications_decided_at_idx
+    ON applications (decided_at);
 
 -- Status portal accounts (created at submission time)
 CREATE TABLE IF NOT EXISTS portal_users (

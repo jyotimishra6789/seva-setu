@@ -10,9 +10,6 @@
   <label for="mobile">{{ t.mobile_label }} *</label>
   <input id="mobile" type="text" name="mobile" maxlength="10" inputmode="numeric"
          autocomplete="tel" placeholder="{{ t.mobile_placeholder }}" required>
-  <label>{{ t.security_check }} {{ captcha_q }}? *</label>
-  <input id="captcha" type="text" name="captcha" inputmode="numeric" aria-label="Answer to security check"
-         style="max-width:160px" required>
   <p><button class="btn" type="submit">{{ t.send_otp }}</button></p>
 </form>
 <p class="note">{{ t.otp_note }}</p>

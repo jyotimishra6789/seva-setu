@@ -37,7 +37,8 @@ config.read(os.path.join(BASE_DIR, "config", "app.ini"))
 
 app = Flask(__name__)
 app.secret_key = os.environ["SEWASETU_SECRET_KEY"]
-app.config["PERMANENT_SESSION_LIFETIME"] = 1800  # 30 mins session
+app.config["PERMANENT_SESSION_LIFETIME"] = 2 * 60 * 60
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024 + 256 * 1024
 
 LANGUAGES = {
     "en": {"name": "English", "speech": "en-IN"},
@@ -557,6 +558,49 @@ def prevent_stale_language_pages(response):
     return response
 
 
+@app.errorhandler(413)
+def request_too_large(error):
+    flash("The document must be 5 MB or smaller.")
+    return redirect(url_for("upload"))
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template(
+        "error.html",
+        error_title="Page not found",
+        error_message="The page you requested could not be found.",
+    ), 404
+
+
+@app.errorhandler(403)
+def forbidden(error):
+    return render_template(
+        "error.html",
+        error_title="Access denied",
+        error_message="You do not have permission to view this page.",
+    ), 403
+
+
+@app.errorhandler(400)
+def bad_request(error):
+    return render_template(
+        "error.html",
+        error_title="Invalid request",
+        error_message="Please check the information and try again.",
+    ), 400
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error("unhandled application error: %s", error)
+    return render_template(
+        "error.html",
+        error_title="Service temporarily unavailable",
+        error_message="Please try again. If the problem continues, contact the help desk.",
+    ), 500
+
+
 ADMIN_USERNAME = os.environ.get("SEWASETU_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ["SEWASETU_ADMIN_PASSWORD"]
 
@@ -660,6 +704,16 @@ def parse_date_of_birth(value):
         except ValueError:
             continue
     return None
+
+
+def document_signature_matches(extension, content):
+    signatures = {
+        ".pdf": content.startswith(b"%PDF-"),
+        ".jpg": content.startswith(b"\xff\xd8\xff"),
+        ".jpeg": content.startswith(b"\xff\xd8\xff"),
+        ".png": content.startswith(b"\x89PNG\r\n\x1a\n"),
+    }
+    return signatures.get(extension, False)
 
 
 def hash_password(p):
@@ -802,13 +856,9 @@ def apply():
         return redirect(url_for("index"))
     if request.method == "POST":
         mobile = request.form.get("mobile", "").strip()
-        captcha = request.form.get("captcha", "").strip()
         if len(mobile) != 10 or not mobile.isdigit():
             flash("Please enter a valid 10-digit mobile number.")
-            return render_template("apply.html", captcha_q=make_captcha())
-        if captcha != str(session.pop("captcha_answer", "")):
-            flash("Please solve the security check correctly.")
-            return render_template("apply.html", captcha_q=make_captcha())
+            return render_template("apply.html")
         conn = get_db()
         cur = conn.cursor()
         try:
@@ -817,7 +867,7 @@ def apply():
                         (mobile, now_ist() - timedelta(minutes=15)))
             if cur.fetchone()[0] >= 5:
                 flash("Too many OTP requests. Please try again in 15 minutes.")
-                return render_template("apply.html", captcha_q=make_captcha())
+                return render_template("apply.html")
             code = str(random.randint(100000, 999999))
             cur.execute("INSERT INTO otps (mobile, code, created_at) VALUES (%s, %s, %s)",
                         (mobile, code, now_ist()))
@@ -830,13 +880,7 @@ def apply():
         session.permanent = True
         session["apply_mobile"] = mobile
         return redirect(url_for("verify"))
-    return render_template("apply.html", captcha_q=make_captcha())
-
-
-def make_captcha():
-    a, b = random.randint(1, 9), random.randint(1, 9)
-    session["captcha_answer"] = a + b
-    return "%d + %d" % (a, b)
+    return render_template("apply.html")
 
 
 @app.route("/verify", methods=["GET", "POST"])
@@ -903,6 +947,12 @@ def upload():
         if extension not in (".pdf", ".jpg", ".jpeg", ".png"):
             flash("Please upload a PDF, JPG, or PNG document.")
             return render_template("upload.html")
+        if not content:
+            flash("The selected document is empty.")
+            return render_template("upload.html")
+        if not document_signature_matches(extension, content):
+            flash("The uploaded file does not match its document type.")
+            return render_template("upload.html")
         if len(content) > 5 * 1024 * 1024:
             flash("The document must be 5 MB or smaller.")
             return render_template("upload.html")
@@ -954,6 +1004,9 @@ def handle_submission():
     if not bank_account or not ifsc:
         flash("Please enter your bank account number and IFSC code.")
         return redirect(url_for("form_step", step=3))
+    if not doc_path or not os.path.isfile(doc_path):
+        flash("Please upload your age proof document before submitting.")
+        return redirect(url_for("upload"))
 
     # Lenient date parsing: prioritize DD/MM/YYYY for India
     dob = parse_date_of_birth(dob_raw)
@@ -1071,10 +1124,10 @@ def generate_acknowledgment(cur, app_id):
         if label == "Bank Account":
             display_val = mask_account(display_val)
         try:
-            pdf.cell(60, 8, label, border=1)
-            pdf.cell(0, 8, display_val, border=1, ln=1)
+            pdf.cell(60, 8, label)
+            pdf.cell(0, 8, display_val, ln=1)
         except Exception:
-            pdf.cell(0, 8, sanitize(display_val, 50), border=1, ln=1)
+            pdf.cell(0, 8, sanitize(display_val, 50), ln=1)
 
     pdf.ln(8)
     pdf.set_font(font_family, "", 9)
@@ -1195,12 +1248,7 @@ def edit_application(app_id):
         form = request.form
         dob_raw = form.get("dob", "").strip()
         dob = None
-        for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d.%m.%Y", "%m/%d/%Y"):
-            try:
-                dob = datetime.strptime(dob_raw, fmt).date()
-                break
-            except ValueError:
-                continue
+        dob = parse_date_of_birth(dob_raw)
         if dob is None:
             flash("Please enter a valid date of birth in DD/MM/YYYY format.")
             return render_template("edit_application.html", a=row, blocks=BLOCKS)

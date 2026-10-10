@@ -11,6 +11,13 @@ The document upload limit is 5 MB. The active-mobile uniqueness constraint is
 enforced by the database, so keep the partial unique index from `schema.sql`
 applied during migrations.
 
+For month-end traffic, run the web process with four or more Gunicorn workers
+and keep `SEWASETU_DB_POOL_MAX` sized per worker so the total stays below the
+database connection budget. SMS delivery is queued in-process and does not
+hold the request open. Before a deadline campaign, exercise the portal with
+the team's HTTP load-test tool and watch database pool wait logs and
+`/var/log/sewasetu`.
+
 For an existing database, run the schema migration before enabling the new
 password-hash migration:
 

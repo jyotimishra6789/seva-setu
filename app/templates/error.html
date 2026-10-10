@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ error_title }}</h2>
+<div class="plain-help" role="alert">{{ error_message }}</div>
+<p><a href="/"><button class="btn">{{ t.home }}</button></a></p>
+{% endblock %}

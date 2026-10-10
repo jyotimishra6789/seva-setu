@@ -23,6 +23,26 @@ class PortalRegressionTests(unittest.TestCase):
         )
         self.assertIsNone(portal.parse_date_of_birth("04/31/1950"))
 
+    def test_document_signature_is_checked(self):
+        self.assertTrue(portal.document_signature_matches(".pdf", b"%PDF-1.7"))
+        self.assertTrue(portal.document_signature_matches(".jpg", b"\xff\xd8\xff\xe0"))
+        self.assertFalse(portal.document_signature_matches(".jpg", b"%PDF-1.7"))
+
+    def test_submission_requires_uploaded_document(self):
+        with self.client.session_transaction() as session:
+            session["verified_mobile"] = "9888888888"
+            session["form_data"] = {
+                "applicant_name": "Kamala Devi",
+                "dob": "15/08/1955",
+                "village": "Namti Gaon",
+                "block": "Namti",
+                "bank_account": "123456789012",
+                "ifsc": "SBIN0001234",
+            }
+        response = self.client.post("/declaration")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/upload")
+
     def test_citizen_cannot_view_another_application(self):
         with self.client.session_transaction() as session:
             session["logged_in"] = True
@@ -39,15 +59,13 @@ class PortalRegressionTests(unittest.TestCase):
         response = self.client.post("/admin/approve/10")
         self.assertEqual(response.status_code, 403)
 
-    def test_invalid_captcha_does_not_send_otp(self):
-        with self.client.session_transaction() as session:
-            session["captcha_answer"] = 11
+    def test_invalid_mobile_does_not_send_otp(self):
         response = self.client.post(
             "/apply",
-            data={"mobile": "9999999999", "captcha": "12"},
+            data={"mobile": "123"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"security check", response.data)
+        self.assertIn(b"valid 10-digit mobile number", response.data)
 
     def test_support_links_are_available(self):
         for path in ("/rti", "/grievance", "/contact"):
