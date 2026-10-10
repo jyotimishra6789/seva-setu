@@ -46,7 +46,7 @@ def run_deemed_approval(dry_run=False):
         port=config.get("database", "port"),
         dbname=config.get("database", "name"),
         user=config.get("database", "user"),
-        password=config.get("database", "password"),
+        password=os.environ["SEWASETU_DB_PASSWORD"],
     )
     cur = conn.cursor()
     run_time = now_ist()

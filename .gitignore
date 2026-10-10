@@ -5,3 +5,4 @@ logs/extracted/
 *.mp3
 seed/
 logs/*.tar.gz
+.env

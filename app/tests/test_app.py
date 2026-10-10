@@ -16,6 +16,13 @@ class PortalRegressionTests(unittest.TestCase):
         self.assertEqual(portal.sanitize(name, maxlen=100), name)
         self.assertEqual(len(portal.sanitize("অ" * 50, maxlen=10)), 10)
 
+    def test_dates_are_parsed_day_first(self):
+        self.assertEqual(
+            portal.parse_date_of_birth("03/04/1950"),
+            datetime(1950, 4, 3).date(),
+        )
+        self.assertIsNone(portal.parse_date_of_birth("04/31/1950"))
+
     def test_citizen_cannot_view_another_application(self):
         with self.client.session_transaction() as session:
             session["logged_in"] = True

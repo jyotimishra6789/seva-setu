@@ -16,6 +16,7 @@ import random
 import hashlib
 import hmac
 import configparser
+import threading
 from concurrent.futures import ThreadPoolExecutor
 import secrets
 from datetime import datetime, date, timedelta
@@ -240,7 +241,7 @@ TRANSLATIONS = {
             "अपना मोबाइल नंबर और भेजा गया एक बार का कोड (OTP) दर्ज करें।",
             "उम्र के प्रमाण-पत्र पर लिखे नाम के अनुसार अपना नाम दर्ज करें।",
             "पता और बैंक खाते की जानकारी दर्ज करें। अंतिम सबमिट से पहले समीक्षा करें।",
-            "उम्र का प्रमाण-पत्र अपलोड करें (आधार, वोटर कार्ड, राशन कार्ड, या जन्म प्रमाण पत्र, अधिकतम 10 MB)।",
+            "उम्र का प्रमाण-पत्र अपलोड करें (आधार, वोटर कार्ड, राशन कार्ड, या जन्म प्रमाण पत्र, अधिकतम 5 MB)।",
             "अंतिम पृष्ठ पर विवरण की समीक्षा कर आवेदन जमा करें और पावती संख्या सुरक्षित रखें।"
         ],
         "safety": "अपना OTP या बैंक PIN कभी साझा न करें। आवेदन जमा करने के लिए विभाग कोई शुल्क नहीं लेता।",
@@ -279,7 +280,7 @@ TRANSLATIONS = {
         "dbt_note": "पेंशन सीधे DBT द्वारा इस खाते में जमा की जाएगी। खाता आवेदक के नाम पर होना चाहिए।",
         "step5_title": "चरण 5/6: दस्तावेज़ अपलोड",
         "upload_heading": "आयु प्रमाण दस्तावेज़ अपलोड करें",
-        "upload_help": "स्वीकृत दस्तावेज़: आधार कार्ड, वोटर आईडी, राशन कार्ड, जन्म प्रमाण पत्र। प्रारूप: JPG, PNG या PDF (10 MB तक)।",
+        "upload_help":         "स्वीकृत दस्तावेज़: आधार कार्ड, वोटर आईडी, राशन कार्ड, जन्म प्रमाण पत्र। प्रारूप: JPG, PNG या PDF (5 MB तक)।",
         "select_doc": "दस्तावेज़ चुनें", "upload_button": "अपलोड करें और आगे बढ़ें",
         "step6_title": "चरण 6/6: समीक्षा और घोषणा",
         "review_heading": "आवेदन विवरण की समीक्षा करें",
@@ -434,7 +435,7 @@ TRANSLATIONS = {
         "dbt_note": "പെൻഷൻ നേരിട്ട് ബാങ്ക് അക്കൗണ്ടിലേക്ക് എത്തും. അക്കൗണ്ട് അപേക്ഷകന്റെ പേരിൽ ആയിരിക്കണം.",
         "step5_title": "ഘട്ടം 5/6: രേഖ അപ്‌ലോഡ്",
         "upload_heading": "പ്രായ രേഖ അപ്‌ലോഡ് ചെയ്യുക",
-        "upload_help": "ആധാർ, വോട്ടർ ഐഡി, റേഷൻ കാർഡ്, ജനന സർട്ടിഫിക്കറ്റ് (JPG, PNG, PDF 10 MB വരെ).",
+        "upload_help": "ആധാർ, വോട്ടർ ഐഡി, റേഷൻ കാർഡ്, ജനന സർട്ടിഫിക്കറ്റ് (JPG, PNG, PDF 5 MB വരെ).",
         "select_doc": "രേഖ തിരഞ്ഞെടുക്കുക", "upload_button": "അപ്‌ലോഡ് ചെയ്യുക",
         "step6_title": "ഘട്ടം 6/6: പരിശോധനയും സത്യപ്രസ്താവനയും",
         "review_heading": "വിവരങ്ങൾ പരിശോധിക്കുക",
@@ -570,6 +571,8 @@ SLA_DAYS = config.getint("pension", "sla_days")
 
 BLOCKS = ["Sonari", "Rajapara", "Dhemaji Pathar", "Borgaon", "Namti", "Khelua"]
 DB_POOL = None
+DB_POOL_SEMAPHORE = None
+DB_POOL_MAX = int(os.environ.get("SEWASETU_DB_POOL_MAX", "12"))
 
 # Rate limiting for status login: mobile -> list of timestamps
 LOGIN_ATTEMPTS = {}
@@ -592,24 +595,35 @@ except Exception:
 
 
 def get_db():
-    global DB_POOL
+    global DB_POOL, DB_POOL_SEMAPHORE
     if DB_POOL is None:
         DB_POOL = pool.ThreadedConnectionPool(
             1,
-            int(os.environ.get("SEWASETU_DB_POOL_MAX", "12")),
+            DB_POOL_MAX,
             host=config.get("database", "host"),
             port=config.get("database", "port"),
             dbname=config.get("database", "name"),
             user=config.get("database", "user"),
             password=os.environ["SEWASETU_DB_PASSWORD"],
         )
-    return PooledConnection(DB_POOL, DB_POOL.getconn())
+        DB_POOL_SEMAPHORE = threading.BoundedSemaphore(DB_POOL_MAX)
+    if not DB_POOL_SEMAPHORE.acquire(timeout=10):
+        app.logger.error("database connection pool exhausted after 10 seconds")
+        abort(503, description="The service is temporarily busy. Please try again.")
+    try:
+        return PooledConnection(
+            DB_POOL, DB_POOL.getconn(), DB_POOL_SEMAPHORE
+        )
+    except Exception:
+        DB_POOL_SEMAPHORE.release()
+        raise
 
 
 class PooledConnection:
-    def __init__(self, connection_pool, connection):
+    def __init__(self, connection_pool, connection, semaphore):
         self._pool = connection_pool
         self._connection = connection
+        self._semaphore = semaphore
         self._returned = False
 
     def __getattr__(self, name):
@@ -623,6 +637,7 @@ class PooledConnection:
                 pass
             self._pool.putconn(self._connection)
             self._returned = True
+            self._semaphore.release()
 
     def __enter__(self):
         return self
@@ -636,6 +651,15 @@ def sanitize(value, maxlen=100):
     if value is None:
         return ""
     return str(value).strip()[:maxlen]
+
+
+def parse_date_of_birth(value):
+    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(value.strip(), fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def hash_password(p):
@@ -932,13 +956,7 @@ def handle_submission():
         return redirect(url_for("form_step", step=3))
 
     # Lenient date parsing: prioritize DD/MM/YYYY for India
-    dob = None
-    for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d.%m.%Y"):
-        try:
-            dob = datetime.strptime(dob_raw, fmt).date()
-            break
-        except ValueError:
-            continue
+    dob = parse_date_of_birth(dob_raw)
     if dob is None:
         flash("Please enter a valid date of birth in DD/MM/YYYY format.")
         return redirect(url_for("form_step", step=1))
@@ -1366,7 +1384,7 @@ def admin_approve(app_id):
     cur = conn.cursor()
     try:
         cur.execute("UPDATE applications SET status = 'APPROVED', decided_at = %s, decided_by = %s "
-                    "WHERE id = %s", (now_ist(), ADMIN_USERNAME, app_id))
+                    "WHERE id = %s AND status = 'PENDING'", (now_ist(), ADMIN_USERNAME, app_id))
         conn.commit()
     finally:
         cur.close()
@@ -1383,7 +1401,7 @@ def admin_reject(app_id):
     cur = conn.cursor()
     try:
         cur.execute("UPDATE applications SET status = 'REJECTED', decided_at = %s, decided_by = %s "
-                    "WHERE id = %s", (now_ist(), ADMIN_USERNAME, app_id))
+                    "WHERE id = %s AND status = 'PENDING'", (now_ist(), ADMIN_USERNAME, app_id))
         conn.commit()
     finally:
         cur.close()

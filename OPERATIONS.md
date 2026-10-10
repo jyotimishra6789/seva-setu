@@ -3,9 +3,13 @@
 ## Configuration
 
 Set `SEWASETU_SECRET_KEY` and `SEWASETU_ADMIN_PASSWORD` in the deployment
-environment. Do not use the sample values in `app/config/app.ini` for a public
-deployment. The application deadline is interpreted in `Asia/Kolkata`, not in
-the container's timezone.
+environment, along with `SEWASETU_DB_PASSWORD`. Do not put these values in
+`app/config/app.ini` or commit a `.env` file. The application deadline is
+interpreted in `Asia/Kolkata`, not in the container's timezone.
+
+The document upload limit is 5 MB. The active-mobile uniqueness constraint is
+enforced by the database, so keep the partial unique index from `schema.sql`
+applied during migrations.
 
 For an existing database, run the schema migration before enabling the new
 password-hash migration:
